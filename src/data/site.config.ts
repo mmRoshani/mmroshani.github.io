@@ -9,7 +9,7 @@ interface SiteConfig {
 }
 
 export const siteConfig: SiteConfig = {
-	author: 'MohammadMojtaba Roshani', // originally `DanielCG`
+	author: 'MohammadMojtaba Roshani (mmRoshani)', // originally `DanielCG`
 	title: 'mmRoshani KB', // Site title.
 	description: "MohammdMojtaba Roshani (mmRoshani)'s Knowledge Base", // Description to display in the meta tags
 	lang: 'en-GB',
