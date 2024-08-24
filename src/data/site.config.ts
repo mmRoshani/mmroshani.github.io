@@ -23,6 +23,6 @@ export const siteConfig: SiteConfig = {
 	- GitHub: https://github.com/mmRoshani
 	- Linkedin: https://linkedin.com/in/mmRoshani
 	- Telegram Channel: https://t.me/mmRoshani_kb
-	- Telegram Account: https://t.me/real_mmRoshani`,
+	- Telegram Account: https://t.me/mmRoshani_real`,
 	paginationSize: 6 // Number of posts per page
 }
