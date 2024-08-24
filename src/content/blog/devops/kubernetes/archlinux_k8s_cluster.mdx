@@ -4,7 +4,7 @@ description: 'A Kubernetes Cluster Based on Arch Linux Image'
 pubDate: 'August 23 2024'
 heroImage: 'src/assets/images/banners/devops/archlinux_k8s_cluster.png'
 category: 'DevOps'
-tags: ['Kubernetes', 'k8s', 'Archlinux', 'docker']
+tags: ['Kubernetes', 'k8s', 'arch-linux', 'docker']
 draft: false
 ---
 
@@ -19,7 +19,7 @@ draft: false
 - containers password is: `nsa`
 - take a look at each **containers exported ports**
 
-### Requirments:
+### Requirements
 
 - docker
 - docker-compose
@@ -57,7 +57,12 @@ to if you want to connect to the containers SSH service run.
 ```sh
 # the password is `nsa`
 $ ssh nasa@0.0.0.0 -p 2200  # for connecting to container No. 1
-$ ssh nasa@0.0.0.0 -p 2200  # for connecting to container No. 2
-$ ssh nasa@0.0.0.0 -p 2200  # for connecting to container No. 3
-
+$ ssh nasa@0.0.0.0 -p 2201  # for connecting to container No. 2
+$ ssh nasa@0.0.0.0 -p 2202  # for connecting to container No. 3
 ```
+
+### Installed Packages on Each Arch Linux
+
+- sudo
+- openssh
+- docker
