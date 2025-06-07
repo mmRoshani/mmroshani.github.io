@@ -33,14 +33,45 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
+  function toggleFullscreen() {
+    const container = document.querySelector('.slideshow-container');
+    const fullscreenBtn = document.querySelector('.fullscreen-btn');
+    
+    if (!document.fullscreenElement) {
+      // Enter fullscreen
+      if (container.requestFullscreen) {
+        container.requestFullscreen();
+      } else if (container.webkitRequestFullscreen) {
+        container.webkitRequestFullscreen();
+      } else if (container.msRequestFullscreen) {
+        container.msRequestFullscreen();
+      }
+      fullscreenBtn.innerHTML = '⛶';
+      fullscreenBtn.title = 'Exit Fullscreen';
+    } else {
+      // Exit fullscreen
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+      fullscreenBtn.innerHTML = '⛶';
+      fullscreenBtn.title = 'Fullscreen';
+    }
+  }
+  
   // Navigation button event listeners
-  document.querySelectorAll('.slide-nav').forEach(function(button) {
+  document.querySelectorAll('.slide-nav, .fullscreen-btn').forEach(function(button) {
     button.addEventListener('click', function() {
       const action = this.getAttribute('data-action');
       if (action === 'prev') {
         changeSlide(-1);
       } else if (action === 'next') {
         changeSlide(1);
+      } else if (action === 'fullscreen') {
+        toggleFullscreen();
       }
     });
   });
@@ -59,6 +90,22 @@ document.addEventListener('DOMContentLoaded', function() {
       changeSlide(-1);
     } else if (event.key === 'ArrowRight') {
       changeSlide(1);
+    } else if (event.key === 'f' || event.key === 'F') {
+      toggleFullscreen();
+    } else if (event.key === 'Escape' && document.fullscreenElement) {
+      toggleFullscreen();
+    }
+  });
+  
+  // Listen for fullscreen changes to update button text
+  document.addEventListener('fullscreenchange', function() {
+    const fullscreenBtn = document.querySelector('.fullscreen-btn');
+    if (document.fullscreenElement) {
+      fullscreenBtn.innerHTML = '⛶';
+      fullscreenBtn.title = 'Exit Fullscreen (Esc)';
+    } else {
+      fullscreenBtn.innerHTML = '⛶';
+      fullscreenBtn.title = 'Fullscreen (F)';
     }
   });
 }); 
