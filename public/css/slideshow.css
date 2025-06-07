@@ -107,37 +107,43 @@
 /* Fullscreen mode styles */
 .slideshow-container:fullscreen {
   background: #000;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+  position: relative;
   width: 100vw;
   height: 100vh;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .slideshow-container:fullscreen .slide {
   background: transparent;
+  height: auto;
   min-height: 100vh;
   width: 100%;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   flex-direction: column;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.slideshow-container:fullscreen .slide.active {
+  display: flex;
 }
 
 .slideshow-container:fullscreen .slide img {
-  max-height: 85vh;
-  max-width: 95vw;
+  max-width: 90%;
+  max-height: 90vh;
+  width: auto;
+  height: auto;
   object-fit: contain;
-  margin: auto;
 }
 
 .slideshow-container:fullscreen .slide-nav {
-  position: absolute;
+  position: fixed;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 100;
+  z-index: 1000;
   background: rgba(0,0,0,0.8);
   padding: 15px;
   font-size: 20px;
@@ -158,14 +164,14 @@
 }
 
 .slideshow-container:fullscreen .slide-indicators {
-  position: absolute;
+  position: fixed;
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(0,0,0,0.8);
   border-radius: 25px;
   padding: 10px 20px;
-  z-index: 100;
+  z-index: 1000;
 }
 
 /* Dark mode support */

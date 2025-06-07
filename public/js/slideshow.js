@@ -1,35 +1,56 @@
 document.addEventListener('DOMContentLoaded', function() {
-  let slideIndex = 1;
+  let currentSlideIndex = 1;
   
-  function changeSlide(n) {
-    showSlide(slideIndex += n);
+  // Initialize slideshow
+  function initSlideshow() {
+    showSlide(currentSlideIndex);
   }
   
-  function currentSlide(n) {
-    showSlide(slideIndex = n);
+  function nextSlide() {
+    currentSlideIndex++;
+    showSlide(currentSlideIndex);
+  }
+  
+  function prevSlide() {
+    currentSlideIndex--;
+    showSlide(currentSlideIndex);
+  }
+  
+  function goToSlide(n) {
+    currentSlideIndex = n;
+    showSlide(currentSlideIndex);
   }
   
   function showSlide(n) {
-    const slides = document.getElementsByClassName("slide");
-    const indicators = document.getElementsByClassName("indicator");
+    const slides = document.querySelectorAll('.slide');
+    const indicators = document.querySelectorAll('.indicator');
     
-    if (n > slides.length) { slideIndex = 1; }
-    if (n < 1) { slideIndex = slides.length; }
+    if (slides.length === 0) return;
     
-    for (let i = 0; i < slides.length; i++) {
-      slides[i].classList.remove("active");
+    // Wrap around
+    if (n > slides.length) {
+      currentSlideIndex = 1;
+    }
+    if (n < 1) {
+      currentSlideIndex = slides.length;
     }
     
-    for (let i = 0; i < indicators.length; i++) {
-      indicators[i].classList.remove("active");
+    // Hide all slides
+    slides.forEach(slide => slide.classList.remove('active'));
+    
+    // Remove active from all indicators
+    indicators.forEach(indicator => indicator.classList.remove('active'));
+    
+    // Show current slide
+    const currentSlide = slides[currentSlideIndex - 1];
+    if (currentSlide) {
+      currentSlide.classList.add('active');
     }
     
-    if (slides[slideIndex - 1]) {
-      slides[slideIndex - 1].classList.add("active");
-    }
-    
-    if (indicators[slideIndex - 1]) {
-      indicators[slideIndex - 1].classList.add("active");
+    // Highlight current indicator
+    const currentIndicator = indicators[currentSlideIndex - 1];
+    if (currentIndicator) {
+      currentIndicator.classList.add('active');
     }
   }
   
@@ -39,7 +60,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!document.fullscreenElement) {
       // Enter fullscreen
       if (container.requestFullscreen) {
-        container.requestFullscreen();
+        container.requestFullscreen().catch(err => {
+          console.log('Error entering fullscreen:', err);
+        });
       } else if (container.webkitRequestFullscreen) {
         container.webkitRequestFullscreen();
       } else if (container.msRequestFullscreen) {
@@ -57,70 +80,89 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  // Navigation button event listeners
-  document.querySelectorAll('.slide-nav').forEach(function(button) {
-    button.addEventListener('click', function(event) {
-      event.stopPropagation();
-      const action = this.getAttribute('data-action');
-      if (action === 'prev') {
-        changeSlide(-1);
-      } else if (action === 'next') {
-        changeSlide(1);
-      }
+  // Event Listeners
+  
+  // Navigation buttons
+  const prevButton = document.querySelector('.slide-nav.prev');
+  const nextButton = document.querySelector('.slide-nav.next');
+  
+  if (prevButton) {
+    prevButton.addEventListener('click', function(e) {
+      e.stopPropagation();
+      prevSlide();
+    });
+  }
+  
+  if (nextButton) {
+    nextButton.addEventListener('click', function(e) {
+      e.stopPropagation();
+      nextSlide();
+    });
+  }
+  
+  // Indicators
+  document.querySelectorAll('.indicator').forEach(function(indicator, index) {
+    indicator.addEventListener('click', function(e) {
+      e.stopPropagation();
+      goToSlide(index + 1);
     });
   });
   
-  // Double-click for fullscreen (only on slide images, not buttons)
+  // Double-click on images for fullscreen
   document.querySelectorAll('.slide img').forEach(function(img) {
-    img.addEventListener('dblclick', function(event) {
-      event.stopPropagation();
+    img.addEventListener('dblclick', function(e) {
+      e.stopPropagation();
       toggleFullscreen();
     });
   });
   
-  // Indicator event listeners
-  document.querySelectorAll('.indicator').forEach(function(indicator) {
-    indicator.addEventListener('click', function(event) {
-      event.stopPropagation();
-      const slideNum = parseInt(this.getAttribute('data-slide'));
-      currentSlide(slideNum);
-    });
-  });
-  
   // Keyboard navigation
-  document.addEventListener('keydown', function(event) {
-    // Only handle keys when slideshow area is focused or in fullscreen
-    const slideshowContainer = document.querySelector('.slideshow-container');
-    const isInViewport = slideshowContainer.getBoundingClientRect().top < window.innerHeight;
+  document.addEventListener('keydown', function(e) {
+    // Check if slideshow is visible
+    const container = document.querySelector('.slideshow-container');
+    if (!container) return;
     
-    if (!isInViewport && !document.fullscreenElement) return;
+    const rect = container.getBoundingClientRect();
+    const isVisible = rect.top < window.innerHeight && rect.bottom > 0;
     
-    if (event.key === 'ArrowLeft') {
-      event.preventDefault();
-      changeSlide(-1);
-    } else if (event.key === 'ArrowRight') {
-      event.preventDefault();
-      changeSlide(1);
-    } else if (event.key === 'f' || event.key === 'F') {
-      if (isInViewport || document.fullscreenElement) {
-        event.preventDefault();
+    // Only handle keyboard if slideshow is visible or in fullscreen
+    if (!isVisible && !document.fullscreenElement) return;
+    
+    switch(e.key) {
+      case 'ArrowLeft':
+        e.preventDefault();
+        prevSlide();
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        nextSlide();
+        break;
+      case 'f':
+      case 'F':
+        e.preventDefault();
         toggleFullscreen();
-      }
-    } else if (event.key === 'Escape') {
-      if (document.fullscreenElement) {
-        event.preventDefault();
-        toggleFullscreen();
-      }
+        break;
+      case 'Escape':
+        if (document.fullscreenElement) {
+          e.preventDefault();
+          toggleFullscreen();
+        }
+        break;
     }
   });
   
-  // Listen for fullscreen changes to hide/show hint
+  // Fullscreen change handler
   document.addEventListener('fullscreenchange', function() {
     const container = document.querySelector('.slideshow-container');
-    if (document.fullscreenElement) {
-      container.style.cursor = 'default';
-    } else {
-      container.style.cursor = 'pointer';
+    if (container) {
+      if (document.fullscreenElement) {
+        container.style.cursor = 'default';
+      } else {
+        container.style.cursor = 'pointer';
+      }
     }
   });
+  
+  // Initialize the slideshow
+  initSlideshow();
 }); 
