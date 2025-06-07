@@ -35,7 +35,6 @@ document.addEventListener('DOMContentLoaded', function() {
   
   function toggleFullscreen() {
     const container = document.querySelector('.slideshow-container');
-    const fullscreenBtn = document.querySelector('.fullscreen-btn');
     
     if (!document.fullscreenElement) {
       // Enter fullscreen
@@ -46,8 +45,6 @@ document.addEventListener('DOMContentLoaded', function() {
       } else if (container.msRequestFullscreen) {
         container.msRequestFullscreen();
       }
-      fullscreenBtn.innerHTML = '⛶';
-      fullscreenBtn.title = 'Exit Fullscreen';
     } else {
       // Exit fullscreen
       if (document.exitFullscreen) {
@@ -57,23 +54,24 @@ document.addEventListener('DOMContentLoaded', function() {
       } else if (document.msExitFullscreen) {
         document.msExitFullscreen();
       }
-      fullscreenBtn.innerHTML = '⛶';
-      fullscreenBtn.title = 'Fullscreen';
     }
   }
   
   // Navigation button event listeners
-  document.querySelectorAll('.slide-nav, .fullscreen-btn').forEach(function(button) {
+  document.querySelectorAll('.slide-nav').forEach(function(button) {
     button.addEventListener('click', function() {
       const action = this.getAttribute('data-action');
       if (action === 'prev') {
         changeSlide(-1);
       } else if (action === 'next') {
         changeSlide(1);
-      } else if (action === 'fullscreen') {
-        toggleFullscreen();
       }
     });
+  });
+  
+  // Double-click for fullscreen
+  document.querySelector('.slideshow-container').addEventListener('dblclick', function() {
+    toggleFullscreen();
   });
   
   // Indicator event listeners
@@ -97,15 +95,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
   
-  // Listen for fullscreen changes to update button text
+  // Listen for fullscreen changes to hide/show hint
   document.addEventListener('fullscreenchange', function() {
-    const fullscreenBtn = document.querySelector('.fullscreen-btn');
+    const container = document.querySelector('.slideshow-container');
     if (document.fullscreenElement) {
-      fullscreenBtn.innerHTML = '⛶';
-      fullscreenBtn.title = 'Exit Fullscreen (Esc)';
+      container.style.cursor = 'default';
     } else {
-      fullscreenBtn.innerHTML = '⛶';
-      fullscreenBtn.title = 'Fullscreen (F)';
+      container.style.cursor = 'pointer';
     }
   });
 }); 
