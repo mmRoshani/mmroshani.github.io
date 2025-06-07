@@ -59,7 +59,9 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Navigation button event listeners
   document.querySelectorAll('.slide-nav').forEach(function(button) {
-    button.addEventListener('click', function() {
+    button.addEventListener('click', function(event) {
+      event.preventDefault();
+      event.stopPropagation();
       const action = this.getAttribute('data-action');
       if (action === 'prev') {
         changeSlide(-1);
@@ -76,7 +78,9 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Indicator event listeners
   document.querySelectorAll('.indicator').forEach(function(indicator) {
-    indicator.addEventListener('click', function() {
+    indicator.addEventListener('click', function(event) {
+      event.preventDefault();
+      event.stopPropagation();
       const slideNum = parseInt(this.getAttribute('data-slide'));
       currentSlide(slideNum);
     });
@@ -84,16 +88,25 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Keyboard navigation
   document.addEventListener('keydown', function(event) {
+    // Prevent default behavior for arrow keys when slideshow is active
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      event.preventDefault();
+    }
+    
     if (event.key === 'ArrowLeft') {
       changeSlide(-1);
     } else if (event.key === 'ArrowRight') {
       changeSlide(1);
     } else if (event.key === 'f' || event.key === 'F') {
+      event.preventDefault();
       toggleFullscreen();
-    } else if (event.key === 'Escape' && document.fullscreenElement) {
-      toggleFullscreen();
+    } else if (event.key === 'Escape') {
+      if (document.fullscreenElement) {
+        event.preventDefault();
+        toggleFullscreen();
+      }
     }
-  });
+  }, true); // Use capture phase to ensure it works in fullscreen
   
   // Listen for fullscreen changes to hide/show hint
   document.addEventListener('fullscreenchange', function() {
