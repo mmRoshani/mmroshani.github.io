@@ -60,7 +60,6 @@ document.addEventListener('DOMContentLoaded', function() {
   // Navigation button event listeners
   document.querySelectorAll('.slide-nav').forEach(function(button) {
     button.addEventListener('click', function(event) {
-      event.preventDefault();
       event.stopPropagation();
       const action = this.getAttribute('data-action');
       if (action === 'prev') {
@@ -71,15 +70,17 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
   
-  // Double-click for fullscreen
-  document.querySelector('.slideshow-container').addEventListener('dblclick', function() {
-    toggleFullscreen();
+  // Double-click for fullscreen (only on slide images, not buttons)
+  document.querySelectorAll('.slide img').forEach(function(img) {
+    img.addEventListener('dblclick', function(event) {
+      event.stopPropagation();
+      toggleFullscreen();
+    });
   });
   
   // Indicator event listeners
   document.querySelectorAll('.indicator').forEach(function(indicator) {
     indicator.addEventListener('click', function(event) {
-      event.preventDefault();
       event.stopPropagation();
       const slideNum = parseInt(this.getAttribute('data-slide'));
       currentSlide(slideNum);
@@ -88,25 +89,30 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Keyboard navigation
   document.addEventListener('keydown', function(event) {
-    // Prevent default behavior for arrow keys when slideshow is active
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-      event.preventDefault();
-    }
+    // Only handle keys when slideshow area is focused or in fullscreen
+    const slideshowContainer = document.querySelector('.slideshow-container');
+    const isInViewport = slideshowContainer.getBoundingClientRect().top < window.innerHeight;
+    
+    if (!isInViewport && !document.fullscreenElement) return;
     
     if (event.key === 'ArrowLeft') {
+      event.preventDefault();
       changeSlide(-1);
     } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
       changeSlide(1);
     } else if (event.key === 'f' || event.key === 'F') {
-      event.preventDefault();
-      toggleFullscreen();
+      if (isInViewport || document.fullscreenElement) {
+        event.preventDefault();
+        toggleFullscreen();
+      }
     } else if (event.key === 'Escape') {
       if (document.fullscreenElement) {
         event.preventDefault();
         toggleFullscreen();
       }
     }
-  }, true); // Use capture phase to ensure it works in fullscreen
+  });
   
   // Listen for fullscreen changes to hide/show hint
   document.addEventListener('fullscreenchange', function() {
