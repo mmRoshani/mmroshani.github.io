@@ -1,0 +1,95 @@
+.slides-container {
+  max-width: 100%;
+  margin: 20px 0;
+}
+
+.slideshow-container {
+  position: relative;
+  background: #f4f4f4;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.slide {
+  display: none;
+  text-align: center;
+  background: white;
+}
+
+.slide.active {
+  display: block;
+}
+
+.slide img {
+  width: 100%;
+  height: auto;
+  max-height: 70vh;
+  object-fit: contain;
+}
+
+.slide-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,0.5);
+  color: white;
+  border: none;
+  padding: 16px;
+  font-size: 18px;
+  cursor: pointer;
+  border-radius: 0 3px 3px 0;
+  user-select: none;
+  transition: background-color 0.3s;
+}
+
+.slide-nav:hover {
+  background: rgba(0,0,0,0.8);
+}
+
+.slide-nav.prev {
+  left: 0;
+  border-radius: 0 3px 3px 0;
+}
+
+.slide-nav.next {
+  right: 0;
+  border-radius: 3px 0 0 3px;
+}
+
+.slide-indicators {
+  text-align: center;
+  padding: 20px;
+  background: #f8f9fa;
+}
+
+.indicator {
+  height: 15px;
+  width: 15px;
+  margin: 0 5px;
+  background-color: #bbb;
+  border-radius: 50%;
+  display: inline-block;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.indicator.active,
+.indicator:hover {
+  background-color: #717171;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .slideshow-container {
+    background: #1a1a1a;
+  }
+  
+  .slide {
+    background: #2d2d2d;
+  }
+  
+  .slide-indicators {
+    background: #333;
+  }
+} 
