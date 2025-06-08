@@ -26,6 +26,97 @@ const { title, description, image, articleDate } = Astro.props
 		</main>
 		<TwSizeIndicator />
 		<EditBlog />
+		<script is:inline>
+			(function() {
+				'use strict';
+				
+				console.log('Header script loading from BaseLayout...');
+				
+				let clickHandler = null;
+				
+				function createClickHandler() {
+					return function(event) {
+						const menu = document.getElementById('astro-header-drawer');
+						const menuButton = document.getElementById('astro-header-drawer-button');
+						
+						if (!menu || !menuButton) {
+							console.warn('Header elements not found');
+							return;
+						}
+						
+						const isClickInside = 
+							menu.contains(event.target) || 
+							menuButton.contains(event.target);
+
+						if (isClickInside) {
+							console.log('Toggle menu');
+							menu.classList.toggle('translate-x-96');
+						} else {
+							console.log('Close menu');
+							menu.classList.add('translate-x-96');
+						}
+					};
+				}
+				
+				function initializeHeader() {
+					console.log('Initializing header from BaseLayout...');
+					
+					const menu = document.getElementById('astro-header-drawer');
+					const menuButton = document.getElementById('astro-header-drawer-button');
+					
+					if (!menu || !menuButton) {
+						console.warn('Header elements not ready, retrying...');
+						setTimeout(initializeHeader, 100);
+						return;
+					}
+					
+					console.log('Header elements found, setting up click handler');
+					
+					// Remove existing handler if it exists
+					if (clickHandler) {
+						document.removeEventListener('click', clickHandler);
+					}
+					
+					// Create and add new handler
+					clickHandler = createClickHandler();
+					document.addEventListener('click', clickHandler);
+					
+					console.log('Header initialized successfully from BaseLayout');
+				}
+				
+				// Multiple initialization strategies
+				function setupHeader() {
+					console.log('Setting up header from BaseLayout...');
+					
+					// Strategy 1: Immediate
+					initializeHeader();
+					
+					// Strategy 2: DOM ready
+					if (document.readyState === 'loading') {
+						document.addEventListener('DOMContentLoaded', initializeHeader);
+					}
+					
+					// Strategy 3: Window load (as fallback)
+					window.addEventListener('load', initializeHeader);
+					
+					// Strategy 4: Astro view transitions
+					document.addEventListener('astro:after-swap', function() {
+						console.log('Astro view transition detected, reinitializing from BaseLayout...');
+						setTimeout(initializeHeader, 50);
+					});
+				}
+				
+				// Initialize
+				setupHeader();
+				
+				// Expose for debugging
+				window.debugHeader = {
+					init: initializeHeader,
+					setup: setupHeader
+				};
+				
+			})();
+		</script>
 		<style>
 			body {
 				margin-left: calc(100vw - 100%); /* prevent layout shift */
