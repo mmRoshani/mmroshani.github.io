@@ -1,31 +1,10 @@
 ---
 import HeaderLink from '@/components/HeaderLink'
-import TelegramIcon from '@/components/icons/TelegramIcon'
-import GithubIcon from '@/components/icons/GithubIcon'
 import MenuIcon from './icons/MenuIcon.astro'
 import Search from '@/components/Search'
 import TagIcon from './icons/TagIcon.astro'
 import ToggleTheme from './ToggleTheme.astro'
-import LinkedinIcon from './icons/linkedinIcon.astro'
-
-// ADD YOUR SOCIAL NETWORKS HERE
-const SOCIALNETWORKS = [
-	{
-		name: 'Github',
-		url: 'https://github.com/mmRoshani',
-		icon: GithubIcon
-	},
-	{
-		name: 'Linkedin',
-		url: 'https://www.linkedin.com/in/mmRoshani',
-		icon: LinkedinIcon
-	},
-	{
-		name: 'Telegram',
-		url: 'https://t.me/mmRoshani_kb',
-		icon: TelegramIcon
-	}
-]
+import { SOCIALNETWORKS } from '@/data/links'
 ---
 
 <header class='relative flex items-center h-12 font-semibold'>

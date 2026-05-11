@@ -1,4 +1,5 @@
 interface SiteConfig {
+	site: string
 	author: string
 	title: string
 	description: string
@@ -9,9 +10,10 @@ interface SiteConfig {
 }
 
 export const siteConfig: SiteConfig = {
+	site: 'https://mmroshani.ir/', // Write here your website url
 	author: 'MohammadMojtaba Roshani (mmRoshani)', // originally `DanielCG`
-	title: 'mmRoshani KB', // Site title.
-	description: "MohammdMojtaba Roshani (mmRoshani)'s Knowledge Base", // Description to display in the meta tags
+	title: 'mmRoshani', // Site title.
+	description: "MohammdMojtaba Roshani (mmRoshani)'s Web Page", // Description to display in the meta tags
 	lang: 'en-GB',
 	ogLocale: 'en_GB',
 	shareMessage: `————————————————
