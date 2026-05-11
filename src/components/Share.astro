@@ -1,7 +1,8 @@
 ---
 import { siteConfig } from '@/data/site.config'
-import TelegramColorIcon from './icons/TelegramColorIcon.astro'
-import LinkedinColorIcon from '@/components/icons/LinkedinColorIcon'
+import TelegramIcon from '@/components/icons/TelegramIcon'
+import LinkedinIcon from '@/components/icons/LinkedinIcon'
+import TwitterIcon from '@/components/icons/TwitterIcon'
 
 const message = encodeURIComponent(siteConfig.shareMessage.replace(/\n/g, '\n'))
 
@@ -12,17 +13,31 @@ const URL = Astro.url.href
 	<span class='mb-1 font-bold text-2xl'>Share</span>
 	<ul class='flex gap-1 text-black dark:text-white'>
 		<li>
-			<a href={`https://t.me/share/url?url=${URL}&text=${message}`} aria-label='Share on Telegram'
-				><TelegramColorIcon /></a
+			<a
+				href={`https://t.me/share/url?url=${encodeURIComponent(URL)}&text=${message}`}
+				aria-label='Share on Telegram'
+				target='_blank'><TelegramIcon /></a
 			>
 		</li>
 
 		<li>
 			<a
-				href={`https://www.linkedin.com/shareArticle?mini=true&url=${URL}`}
+				href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(URL)}`}
 				aria-label='Share on LinkedIn'
+				target='_blank'
+				rel='noopener noreferrer'
 			>
-				<LinkedinColorIcon /></a
+				<LinkedinIcon /></a
+			>
+		</li>
+
+		<li>
+			<a
+				href={`https://x.com/intent/tweet?url=${encodeURIComponent(URL)}&hashtags=mmRoshani&text=${message}`}
+				aria-label='Share on X'
+				target='_blank'
+			>
+				<TwitterIcon /></a
 			>
 		</li>
 	</ul>
