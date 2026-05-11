@@ -1,2 +1,2 @@
 // List of categories for blog posts
-export const CATEGORIES = ['Weekly Meetings'] as const
+export const CATEGORIES = ['MLOps', 'DevOps', 'Linux'] as const
