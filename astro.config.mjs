@@ -28,7 +28,9 @@ export default defineConfig({
 			},
 			drafts: true
 		}),
-		sitemap(),
+		sitemap({ 
+  			destinationDir: 'dist'
+		}),
 		tailwind()
 	]
 })

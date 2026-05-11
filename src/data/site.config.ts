@@ -21,7 +21,7 @@ export const siteConfig: SiteConfig = {
 	WRITE_YOUR_CUSTOM_MESSAGE_HERE
 	\n
 	 ————————————————
-	- Blog: https://mmroshani.github.io
+	- Blog: https://mmroshani.ir
 	- GitHub: https://github.com/mmRoshani
 	- Linkedin: https://linkedin.com/in/mmRoshani
 	- Telegram Channel: https://t.me/mmRoshani_kb
