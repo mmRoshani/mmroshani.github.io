@@ -1,85 +1,79 @@
 ;(function () {
 	'use strict'
 
-	console.log('Header script loading from external file...')
+	const menuId = 'astro-header-drawer'
+	const buttonId = 'astro-header-drawer-button'
+	const hiddenClass = 'translate-x-full'
 
-	let clickHandler = null
-	let initAttempts = 0
-	const maxAttempts = 50 // 5 seconds max
+	let initialized = false
+	let menuButton = null
+	let menu = null
 
-	function createClickHandler() {
-		return function (event) {
-			const menu = document.getElementById('astro-header-drawer')
-			const menuButton = document.getElementById('astro-header-drawer-button')
+	function setMenuOpen(isOpen) {
+		if (!menu || !menuButton) {
+			return
+		}
 
-			if (!menu || !menuButton) {
-				console.warn('Header elements not found in click handler')
-				return
-			}
+		menu.classList.toggle(hiddenClass, !isOpen)
+		menuButton.setAttribute('aria-expanded', isOpen ? 'true' : 'false')
+	}
 
-			const isClickInside = menu.contains(event.target) || menuButton.contains(event.target)
+	function isMenuOpen() {
+		return menu ? !menu.classList.contains(hiddenClass) : false
+	}
 
-			if (isClickInside) {
-				console.log('Toggle menu from external script')
-				menu.classList.toggle('translate-x-96')
-			} else {
-				console.log('Close menu from external script')
-				menu.classList.add('translate-x-96')
-			}
+	function handleButtonClick(event) {
+		event.stopPropagation()
+		setMenuOpen(!isMenuOpen())
+	}
+
+	function handleDocumentClick(event) {
+		if (!menu || !menuButton || !isMenuOpen()) {
+			return
+		}
+
+		const target = event.target
+		if (target instanceof Node && (menu.contains(target) || menuButton.contains(target))) {
+			return
+		}
+
+		setMenuOpen(false)
+	}
+
+	function handleKeydown(event) {
+		if (event.key === 'Escape') {
+			setMenuOpen(false)
 		}
 	}
 
 	function initializeHeader() {
-		console.log('Initializing header from external file, attempt:', initAttempts + 1)
-
-		const menu = document.getElementById('astro-header-drawer')
-		const menuButton = document.getElementById('astro-header-drawer-button')
+		menu = document.getElementById(menuId)
+		menuButton = document.getElementById(buttonId)
 
 		if (!menu || !menuButton) {
-			initAttempts++
-			if (initAttempts < maxAttempts) {
-				console.warn('Header elements not ready, retrying...')
-				setTimeout(initializeHeader, 100)
-				return
-			} else {
-				console.error('Failed to initialize header after', maxAttempts, 'attempts')
-				return
-			}
+			return
 		}
 
-		console.log('Header elements found, setting up click handler from external file')
-
-		// Remove existing handler if it exists
-		if (clickHandler) {
-			document.removeEventListener('click', clickHandler)
+		if (initialized) {
+			return
 		}
 
-		// Create and add new handler
-		clickHandler = createClickHandler()
-		document.addEventListener('click', clickHandler)
-
-		console.log('Header initialized successfully from external file')
-
-		// Reset attempts counter for next time
-		initAttempts = 0
+		menuButton.addEventListener('click', handleButtonClick)
+		document.addEventListener('click', handleDocumentClick)
+		document.addEventListener('keydown', handleKeydown)
+		initialized = true
 	}
 
-	// Initialize immediately
-	initializeHeader()
+	function setupHeader() {
+		initializeHeader()
 
-	// Also initialize on DOM ready
-	if (document.readyState === 'loading') {
-		document.addEventListener('DOMContentLoaded', initializeHeader)
-	}
-
-	// And on window load
-	window.addEventListener('load', initializeHeader)
-
-	// Expose for debugging
-	window.externalHeaderScript = {
-		init: initializeHeader,
-		attempts: function () {
-			return initAttempts
+		if (document.readyState === 'loading') {
+			document.addEventListener('DOMContentLoaded', initializeHeader, { once: true })
 		}
+
+		window.addEventListener('load', initializeHeader, { once: true })
+		document.addEventListener('astro:after-swap', initializeHeader)
 	}
+
+	setupHeader()
 })()

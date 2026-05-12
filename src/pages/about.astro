@@ -1,0 +1,12 @@
+---
+import AboutMe from '@/components/AboutMe'
+import BaseLayout from '@/layouts/BaseLayout'
+import { siteConfig } from '@/site-config'
+---
+
+<BaseLayout
+	title='About Me'
+	description={`Learn more about ${siteConfig.author}, including background in AI engineering, data platforms, and distributed systems.`}
+>
+	<AboutMe />
+</BaseLayout>

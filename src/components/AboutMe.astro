@@ -1,0 +1,430 @@
+---
+import { siteConfig } from '@/site-config'
+import { SOCIALNETWORKS } from '@/data/links'
+
+const summaryParagraphs = [
+	'I am an AI and distributed systems engineer focused on trustworthy machine learning, federated and decentralized training, and production-grade MLOps and LLMOps platforms. My work sits where research ideas meet the systems required to run them reliably.',
+	'I build across the full stack of modern AI delivery: distributed training and serving, agentic workflows, retrieval systems, streaming data platforms, and the observability, automation, and platform layers that keep models dependable after launch.',
+	'Alongside engineering, I teach, review, mentor, and write about AI engineering and data platforms. This site is where I share practical notes from building systems that need to be secure, scalable, and maintainable in the real world.'
+]
+
+const focusTopics = [
+	'Trustworthy AI',
+	'Federated Learning',
+	'Agentic Systems',
+	'Data Platforms',
+	'MLOps'
+]
+
+const education = [
+	{
+		degree: 'M.Sc. in Computer Software Engineering',
+		institution: 'Shiraz University',
+		focus:
+			'Distributed systems, federated learning, privacy-aware machine learning, and secure decentralized training.'
+	},
+	{
+		degree: 'B.Sc. in Computer Engineering',
+		institution: 'Shahid Bahonar University',
+		focus: 'Artificial intelligence, data mining, and applied machine learning.'
+	}
+]
+
+const competencyGroups = [
+	{
+		title: 'AI, Agents & MLOps',
+		items: [
+			'Distributed training and serving',
+			'LLM systems and inference',
+			'Agent orchestration and tool use',
+			'RAG and vector retrieval',
+			'Experiment tracking and model lifecycle automation'
+		]
+	},
+	{
+		title: 'Data & Streaming',
+		items: [
+			'Event-driven architectures',
+			'Stream and batch processing',
+			'CDC and real-time analytics',
+			'Operational data stores and search',
+			'Dashboards and observability'
+		]
+	},
+	{
+		title: 'Platform Engineering',
+		items: [
+			'Python, TypeScript, Go',
+			'APIs and microservices',
+			'Linux, containers, and Kubernetes',
+			'CI/CD for ML and software systems',
+			'Technical leadership and delivery'
+		]
+	}
+]
+
+const experience = [
+	{
+		role: 'AI Engineering',
+		summary:
+			'Lead engineering for production AI products built around multi-agent workflows, retrieval-augmented reasoning, speech interfaces, and privacy-aware system design.'
+	},
+	{
+		role: 'Platform Lead, Distributed AI',
+		summary:
+			'Architect end-to-end machine learning operations platforms that automate training, evaluation, deployment, and monitoring for research and product teams.'
+	},
+	{
+		role: 'Graduate Research Engineer',
+		summary:
+			'Research and build distributed learning systems spanning federated, clustered, and decentralized training with privacy-preserving protocols and scalable orchestration.'
+	},
+	{
+		role: 'Trustworthy AI Research Engineer',
+		summary:
+			'Design secure collaborative learning approaches that combine encryption, privacy controls, and robust evaluation against common leakage and inference risks.'
+	},
+	{
+		role: 'Research Engineer, Communication-Efficient ML',
+		summary:
+			'Develop lightweight coordination methods for non-IID federated settings, including similarity-driven client grouping and neighbor selection without exposing raw model values.'
+	},
+	{
+		role: 'Research Assistant & Platform Engineer',
+		summary:
+			'Build distributed training and serving workflows, explore scalable LLM deployment patterns, and support research infrastructure for high-performance computing groups.'
+	},
+	{
+		role: 'Software & Data Engineer',
+		summary:
+			'Deliver large-scale streaming systems, access-control services, and cloud-native microservices for real-time operational data and IoT workloads.'
+	},
+	{
+		role: 'Data Engineer',
+		summary:
+			'Create automated ingestion and processing pipelines for analytics, geospatial monitoring, and high-volume behavioral data products.'
+	}
+]
+
+const community = [
+	{
+		title: 'Teaching & Seminars',
+		detail:
+			'Teaching assistant and seminar presenter on cloud computing, distributed systems, federated learning, secure machine learning, and real-time data processing.'
+	},
+	{
+		title: 'Peer Review',
+		detail:
+			'Reviewer for workshops and conferences focused on trustworthy AI, AI safety, and socially responsible deployment.'
+	},
+	{
+		title: 'Open Source & Writing',
+		detail:
+			'Contributor to open-source tooling and author of technical writing on AI engineering, data platforms, and production lessons learned.'
+	}
+]
+
+const highlights = [
+	'Graduate research in privacy-aware federated learning and distributed coordination.',
+	'Hands-on delivery across MLOps platforms, streaming data systems, and agentic AI products.',
+	'Teaching, mentoring, and cross-functional technical leadership in research and industry settings.',
+	'Recognition in national academic, engineering, and applied AI competitions.',
+	'Professional certification in data engineering and platform-oriented software delivery.'
+]
+
+const languages = ['Farsi (native)', 'English (professional working proficiency)']
+---
+
+<section
+	class='about-me relative isolate overflow-hidden rounded-[1.75rem] border border-stone-200/80 bg-stone-50/80 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-[#0f0e17] dark:shadow-[0_24px_80px_-40px_rgba(0,0,0,0.85)]'
+>
+	<div class='about-me__glow about-me__glow--one' aria-hidden='true'></div>
+	<div class='about-me__glow about-me__glow--two' aria-hidden='true'></div>
+	<div class='about-me__grid' aria-hidden='true'></div>
+
+	<div class='relative z-10 flex flex-col gap-10 px-6 py-10 sm:px-10 sm:py-12 lg:px-12 lg:py-14'>
+		<div class='grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,18rem)] lg:items-stretch'>
+			<div class='about-me__intro flex h-full flex-col gap-4 lg:justify-between'>
+				<div class='space-y-4'>
+					<p class='about-me__eyebrow'>About Me</p>
+					<h1 class='text-4xl font-bold tracking-tight text-stone-950 dark:text-white sm:text-5xl'>
+						{siteConfig.author}
+					</h1>
+					<div
+						class='max-w-3xl space-y-4 text-base leading-7 text-stone-600 dark:text-stone-300 sm:text-lg'
+					>
+						{summaryParagraphs.map((paragraph) => <p>{paragraph}</p>)}
+					</div>
+				</div>
+
+				<div class='flex flex-wrap gap-2'>
+					{focusTopics.map((topic) => <span class='about-me__chip'>{topic}</span>)}
+				</div>
+			</div>
+
+			<aside
+				class='about-me__connect flex h-full flex-col rounded-[1.5rem] border border-violet-500/15 bg-gradient-to-br from-violet-500/10 via-white/70 to-cyan-500/10 p-5 dark:border-violet-400/20 dark:from-violet-500/10 dark:via-white/[0.03] dark:to-cyan-500/10 sm:p-6'
+			>
+				<div class='flex items-center gap-3'>
+					<span class='about-me__connect-badge' aria-hidden='true'>✦</span>
+					<h2
+						class='text-sm font-semibold uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-300'
+					>
+						Connect
+					</h2>
+				</div>
+				<p class='mt-3 text-sm leading-6 text-stone-600 dark:text-stone-300'>
+					Say hello for collaboration, speaking, or references.
+				</p>
+				<ul class='mt-5 space-y-3'>
+					{
+						SOCIALNETWORKS.map((network) => (
+							<li>
+								<a
+									class='about-me__connect-link group flex items-center gap-3 rounded-2xl border border-stone-200/80 bg-white/85 px-3.5 py-3 transition duration-200 hover:-translate-y-0.5 hover:border-cyan-500/30 dark:border-white/10 dark:bg-[#12101c] dark:hover:border-cyan-400/30'
+									href={network.url}
+									target='_blank'
+									rel='noopener noreferrer'
+									aria-label={`Open ${network.name}`}
+								>
+									<span class='flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500/15 to-violet-500/15 text-stone-900 transition group-hover:scale-105 group-hover:from-cyan-500/25 group-hover:to-violet-500/25 dark:text-white'>
+										<network.icon />
+									</span>
+									<span class='min-w-0'>
+										<span class='block text-sm font-semibold text-stone-950 dark:text-white'>
+											{network.name}
+										</span>
+										<span class='block truncate text-xs text-stone-500 dark:text-stone-400'>
+											{network.url.replace(/^https?:\/\//, '')}
+										</span>
+									</span>
+								</a>
+							</li>
+						))
+					}
+				</ul>
+			</aside>
+		</div>
+
+		<div class='grid gap-4 md:grid-cols-3'>
+			{
+				competencyGroups.map((group) => (
+					<article class='about-me__card rounded-2xl border border-stone-200/80 bg-white/80 p-5 dark:border-white/10 dark:bg-white/[0.03]'>
+						<h2 class='text-lg font-semibold text-stone-950 dark:text-white'>{group.title}</h2>
+						<ul class='mt-3 space-y-2 text-sm leading-6 text-stone-600 dark:text-stone-300'>
+							{group.items.map((item) => (
+								<li class='flex gap-2'>
+									<span
+										class='mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-500/80'
+										aria-hidden='true'
+									/>
+									<span>{item}</span>
+								</li>
+							))}
+						</ul>
+					</article>
+				))
+			}
+		</div>
+
+		<div class='grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]'>
+			<section
+				class='about-me__panel rounded-[1.5rem] border border-stone-200/80 bg-white/75 p-6 dark:border-white/10 dark:bg-white/[0.03] sm:p-8'
+			>
+				<h2 class='text-2xl font-semibold text-stone-950 dark:text-white'>Education</h2>
+				<ul class='mt-6 space-y-5'>
+					{
+						education.map((item) => (
+							<li class='about-me__timeline-item rounded-2xl border border-stone-200/70 bg-white/70 p-4 dark:border-white/10 dark:bg-white/[0.02]'>
+								<h3 class='text-base font-semibold text-stone-950 dark:text-white'>
+									{item.degree}
+								</h3>
+								<p class='mt-2 text-sm font-medium text-stone-700 dark:text-stone-200'>
+									{item.institution}
+								</p>
+								<p class='mt-2 text-sm leading-6 text-stone-600 dark:text-stone-300'>
+									{item.focus}
+								</p>
+							</li>
+						))
+					}
+				</ul>
+			</section>
+
+			<section
+				class='about-me__panel rounded-[1.5rem] border border-violet-500/15 bg-gradient-to-br from-violet-500/10 via-transparent to-cyan-500/10 p-6 dark:border-violet-400/20 sm:p-8'
+			>
+				<h2 class='text-2xl font-semibold text-stone-950 dark:text-white'>Selected Highlights</h2>
+				<ul class='mt-6 space-y-3'>
+					{
+						highlights.map((item) => (
+							<li class='flex gap-3 text-sm leading-6 text-stone-600 dark:text-stone-300'>
+								<span
+									class='mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-500/80'
+									aria-hidden='true'
+								/>
+								<span>{item}</span>
+							</li>
+						))
+					}
+				</ul>
+
+				<div class='mt-8'>
+					<h3
+						class='text-sm font-semibold uppercase tracking-[0.2em] text-stone-700 dark:text-stone-200'
+					>
+						Languages
+					</h3>
+					<div class='mt-3 flex flex-wrap gap-2'>
+						{languages.map((language) => <span class='about-me__chip'>{language}</span>)}
+					</div>
+				</div>
+			</section>
+		</div>
+
+		<section
+			class='about-me__panel rounded-[1.5rem] border border-stone-200/80 bg-white/75 p-6 dark:border-white/10 dark:bg-white/[0.03] sm:p-8'
+		>
+			<h2 class='text-2xl font-semibold text-stone-950 dark:text-white'>Experience</h2>
+			<ul class='mt-6 space-y-4'>
+				{
+					experience.map((item) => (
+						<li class='about-me__timeline-item rounded-2xl border border-stone-200/70 bg-white/70 p-5 dark:border-white/10 dark:bg-white/[0.02]'>
+							<h3 class='text-lg font-semibold text-stone-950 dark:text-white'>{item.role}</h3>
+							<p class='mt-3 text-sm leading-7 text-stone-600 dark:text-stone-300'>
+								{item.summary}
+							</p>
+						</li>
+					))
+				}
+			</ul>
+		</section>
+
+		<section class='grid gap-4 md:grid-cols-3'>
+			{
+				community.map((item) => (
+					<article class='about-me__card rounded-2xl border border-stone-200/80 bg-white/80 p-5 dark:border-white/10 dark:bg-white/[0.03]'>
+						<h2 class='text-lg font-semibold text-stone-950 dark:text-white'>{item.title}</h2>
+						<p class='mt-3 text-sm leading-6 text-stone-600 dark:text-stone-300'>{item.detail}</p>
+					</article>
+				))
+			}
+		</section>
+	</div>
+</section>
+
+<style is:global>
+	.about-me__eyebrow {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.75rem;
+		font-weight: 700;
+		letter-spacing: 0.28em;
+		text-transform: uppercase;
+		color: rgb(8 145 178);
+	}
+
+	.about-me__eyebrow::before {
+		content: '';
+		width: 2.5rem;
+		height: 1px;
+		background: linear-gradient(90deg, rgb(34 211 238), transparent);
+	}
+
+	.about-me__glow {
+		position: absolute;
+		border-radius: 9999px;
+		filter: blur(70px);
+		opacity: 0.55;
+		pointer-events: none;
+	}
+
+	.about-me__glow--one {
+		top: -4rem;
+		right: -3rem;
+		width: 18rem;
+		height: 18rem;
+		background: rgba(34, 211, 238, 0.28);
+	}
+
+	.about-me__glow--two {
+		bottom: -5rem;
+		left: -4rem;
+		width: 20rem;
+		height: 20rem;
+		background: rgba(139, 92, 246, 0.24);
+	}
+
+	.about-me__grid {
+		position: absolute;
+		inset: 0;
+		background-image:
+			linear-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+			linear-gradient(90deg, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+		background-size: 32px 32px;
+		mask-image: radial-gradient(circle at top, black, transparent 78%);
+		pointer-events: none;
+	}
+
+	html.dark .about-me__grid {
+		background-image:
+			linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+			linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+	}
+
+	.about-me__card,
+	.about-me__panel,
+	.about-me__connect {
+		backdrop-filter: blur(12px);
+	}
+
+	.about-me__chip {
+		display: inline-flex;
+		align-items: center;
+		border-radius: 9999px;
+		border: 1px solid rgba(34, 211, 238, 0.18);
+		background: rgba(34, 211, 238, 0.08);
+		padding: 0.35rem 0.8rem;
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: rgb(14 116 144);
+	}
+
+	html.dark .about-me__chip {
+		color: rgb(165 243 252);
+	}
+</style>
+
+<style>
+	.about-me__connect-badge {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		border-radius: 9999px;
+		background: linear-gradient(135deg, rgba(34, 211, 238, 0.2), rgba(139, 92, 246, 0.2));
+		color: rgb(8 145 178);
+		font-size: 0.9rem;
+		box-shadow: 0 8px 20px -12px rgba(34, 211, 238, 0.8);
+	}
+
+	.about-me__connect-link {
+		box-shadow: 0 10px 24px -20px rgba(15, 23, 42, 0.55);
+	}
+
+	.about-me__timeline-item {
+		position: relative;
+		overflow: hidden;
+	}
+
+	.about-me__timeline-item::before {
+		content: '';
+		position: absolute;
+		inset: 0 auto 0 0;
+		width: 3px;
+		background: linear-gradient(180deg, rgb(34 211 238), rgb(139 92 246));
+		opacity: 0.75;
+	}
+</style>
