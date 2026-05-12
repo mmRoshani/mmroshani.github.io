@@ -14,6 +14,20 @@ tags:
 title: 'Mastering AI Agent Design Patterns: From Theory to Production'
 ---
 
+import PostImage from '@/components/mdx/PostImage'
+import agentPatternsBannerBook from '@/assets/images/banners/ai/agent_patterns_banner_book.png'
+import section1 from '@/assets/images/banners/ai/agent_patterns_banner_section1.png'
+import section2 from '@/assets/images/banners/ai/agent_patterns_banner_section2.png'
+import section3 from '@/assets/images/banners/ai/agent_patterns_banner_section3.png'
+import section4 from '@/assets/images/banners/ai/agent_patterns_banner_section4.png'
+import section5 from '@/assets/images/banners/ai/agent_patterns_banner_section5.png'
+import section6 from '@/assets/images/banners/ai/agent_patterns_banner_section6.png'
+import section7 from '@/assets/images/banners/ai/agent_patterns_banner_section7.png'
+import section8 from '@/assets/images/banners/ai/agent_patterns_banner_section8.png'
+import section9 from '@/assets/images/banners/ai/agent_patterns_banner_section9.png'
+import section10 from '@/assets/images/banners/ai/agent_patterns_banner_section10.png'
+import section11 from '@/assets/images/banners/ai/agent_patterns_banner_section11.png'
+
 ## Introduction
 
 The landscape of artificial intelligence is undergoing a massive paradigm shift. We are rapidly moving away from zero-shot, conversational LLM wrappers toward autonomous, multi-step agentic systems. As AI Engineers, we are no longer just tweaking prompts; we are designing complex, stateful architectures where language models act as reasoning engines orchestrating tools, memory, and parallel execution threads.
@@ -21,12 +35,7 @@ But as with any evolving software engineering discipline, building reliable agen
 
 In this comprehensive guide, we are going to explore the foundational patterns required to build robust, scalable AI agents. We will draw heavily from the definitive new book, _Agentic Design Patterns_ and deep dive into the architectures that are defining the next generation of software. Furthermore, I will share some of my own personal, field-tested design patterns—concepts I’ve sketched out in my own notes while building production-grade LLM systems.
 
-<div class='flex justify-center'>
-	<img
-		src='/src/assets/images/banners/ai/agent_patterns_banner_book.png'
-		alt='Agentic Design Patterns Banner'
-	/>
-</div>
+<PostImage src={agentPatternsBannerBook} alt='Agentic Design Patterns Banner' natural />
 
 Whether you are building coding assistants, automated researchers, or autonomous customer support agents, mastering these patterns is the key to moving your AI projects from fragile prototypes to highly reliable production systems.
 
@@ -42,7 +51,11 @@ Let's break down some of the core patterns detailed in the book and how you can 
 
 #### 1.1. Prompt Chaining & Routing
 
-![Prompt Chaining & Routing Banner](/src/assets/images/banners/ai/agent_patterns_banner_section1.png 'AI Generated Image for: Prompt Chaining & Routing')
+<PostImage
+	src={section1}
+	alt='Prompt Chaining & Routing Banner'
+	title='AI Generated Image for: Prompt Chaining & Routing'
+/>
 
 The most fundamental shift in agentic design is the realization that a single prompt is rarely sufficient for complex tasks. **Prompt Chaining** (Chapter 1) is the pattern of breaking down a massive cognitive load into smaller, sequential tasks. Instead of asking an LLM to "research a topic, write a report, and format it in markdown," you chain three distinct prompts. The output of Prompt A becomes the input of Prompt B.
 
@@ -50,7 +63,11 @@ The most fundamental shift in agentic design is the realization that a single pr
 
 #### 1.2. Parallelization & Reflection
 
-![Parallelization & Reflection Banner](/src/assets/images/banners/ai/agent_patterns_banner_section2.png 'AI Generated Image for: Parallelization & Reflection')
+<PostImage
+	src={section2}
+	alt='Parallelization & Reflection Banner'
+	title='AI Generated Image for: Parallelization & Reflection'
+/>
 
 Speed and accuracy are the twin pillars of good AI engineering. **Parallelization** (Chapter 3) involves fanning out tasks to multiple agents simultaneously. For example, if you are building an agent to review a pull request, you don't need to evaluate security, performance, and style sequentially. You can dispatch three parallel agentic calls.
 
@@ -65,7 +82,11 @@ Consider a coding agent:
 
 #### 1.3. Tool Use & Planning
 
-![Tool Use & Planning Banner](/src/assets/images/banners/ai/agent_patterns_banner_section3.png 'AI Generated Image for: Tool Use & Planning')
+<PostImage
+	src={section3}
+	alt='Tool Use & Planning Banner'
+	title='AI Generated Image for: Tool Use & Planning'
+/>
 
 LLMs are inherently constrained by their training data cutoff. **Tool Use** (Chapter 5) gives them limbs. By providing the model with a schema of available functions (like web search, SQL execution, or API calls), the model can decide when to fetch external data.
 
@@ -77,7 +98,11 @@ While the book provides the standard library of agentic patterns, building these
 
 #### 2.1. The "Contextual Funnel" Pattern
 
-![Contextual Funnel Pattern Banner](/src/assets/images/banners/ai/agent_patterns_banner_section4.png 'AI Generated Image for: Contextual Funnel Pattern')
+<PostImage
+	src={section4}
+	alt='Contextual Funnel Pattern Banner'
+	title='AI Generated Image for: Contextual Funnel Pattern'
+/>
 
 One of the biggest issues AI engineers face is context window bloat. When an agent is doing extensive research, it accumulates massive amounts of text, eventually degrading its reasoning capabilities (the "lost in the middle" phenomenon).
 
@@ -91,7 +116,11 @@ By mathematically bounding the input size, you guarantee that the final reasonin
 
 #### 2.2. The "Fallback Cascade" Pattern
 
-![Fallback Cascade Pattern Banner](/src/assets/images/banners/ai/agent_patterns_banner_section5.png 'AI Generated Image for: Fallback Cascade Pattern')
+<PostImage
+	src={section5}
+	alt='Fallback Cascade Pattern Banner'
+	title='AI Generated Image for: Fallback Cascade Pattern'
+/>
 
 APIs fail. Models go down. Rate limits are exceeded. The Fallback Cascade pattern is an engineering necessity. When building a tool-calling agent, you must design for deterministic failure.
 
@@ -103,7 +132,11 @@ If an agent attempts to use a `Search_Web` tool and the search API times out, th
 
 #### 2.3. The "Semantic Caching & Fast-Path" Pattern
 
-![Semantic Caching & Fast-Path Banner](/src/assets/images/banners/ai/agent_patterns_banner_section6.png 'AI Generated Image for: Semantic Caching & Fast-Path')
+<PostImage
+	src={section6}
+	alt='Semantic Caching & Fast-Path Banner'
+	title='AI Generated Image for: Semantic Caching & Fast-Path'
+/>
 
 Running complex agentic loops is expensive and slow. If a user asks an autonomous research agent a question it has already solved for another user yesterday, it shouldn't spin up a 5-minute planning and tool-calling loop.
 
@@ -115,7 +148,11 @@ As you scale your AI engineering efforts, you will inevitably move past single-a
 
 #### 3.1. Multi-Agent Orchestration
 
-![Multi-Agent Orchestration Banner](/src/assets/images/banners/ai/agent_patterns_banner_section7.png 'AI Generated Image for: Multi-Agent Orchestration')
+<PostImage
+	src={section7}
+	alt='Multi-Agent Orchestration Banner'
+	title='AI Generated Image for: Multi-Agent Orchestration'
+/>
 
 Building a Multi-Agent System (MAS) is similar to structuring a corporate hierarchy (Chapter 7). You have a "Manager" agent responsible for user interaction and goal setting. The Manager delegates tasks to "Specialist" agents.
 
@@ -128,7 +165,11 @@ For example, a Software Development MAS might include:
 
 #### 3.2. Memory Management (Statefulness)
 
-![Memory Management Banner](/src/assets/images/banners/ai/agent_patterns_banner_section8.png 'AI Generated Image for: Memory Management')
+<PostImage
+	src={section8}
+	alt='Memory Management Banner'
+	title='AI Generated Image for: Memory Management'
+/>
 
 True autonomy requires memory (Chapter 8). An agent must remember what it did 5 minutes ago (Short-term memory) and what the user prefers based on interactions from 5 months ago (Long-term memory).
 
@@ -137,13 +178,21 @@ True autonomy requires memory (Chapter 8). An agent must remember what it did 5 
 
 #### 3.3. Model Context Protocol (MCP)
 
-![Model Context Protocol Banner](/src/assets/images/banners/ai/agent_patterns_banner_section9.png 'AI Generated Image for: Model Context Protocol')
+<PostImage
+	src={section9}
+	alt='Model Context Protocol Banner'
+	title='AI Generated Image for: Model Context Protocol'
+/>
 
 One of the most exciting developments covered in the book is the Model Context Protocol (MCP). As we build more tools and agents, integrating them becomes a networking nightmare (Chapter 10). MCP aims to standardize how context, memory, and tools are exposed to models. By adopting standardized protocols, AI engineers can plug-and-play different memory modules and toolsets without rewriting the connective middleware every time a new LLM is released.
 
 ### 4. Best Practices for Implementing Agentic Patterns
 
-![Implementing Agentic Patterns Banner](/src/assets/images/banners/ai/agent_patterns_banner_section10.png 'AI Generated Image for: Implementing Agentic Patterns')
+<PostImage
+	src={section10}
+	alt='Implementing Agentic Patterns Banner'
+	title='AI Generated Image for: Implementing Agentic Patterns'
+/>
 
 To wrap up, integrating these design patterns requires a shift in how we handle DevOps and monitoring.
 
@@ -153,7 +202,7 @@ To wrap up, integrating these design patterns requires a shift in how we handle 
 
 ### 5. Conclusion
 
-![Conclusion Banner](/src/assets/images/banners/ai/agent_patterns_banner_section11.png 'AI Generated Image for: Conclusion')
+<PostImage src={section11} alt='Conclusion Banner' title='AI Generated Image for: Conclusion' />
 
 We are moving past the era of raw prompting and entering the era of AI Engineering architecture. By embracing the principles outlined in _Agentic Design Patterns_—Prompt Chaining, Parallelization, Tool Use, and Multi-Agent Orchestration—and combining them with field-tested optimizations like Contextual Funnels and Semantic Caching, we can build robust, highly autonomous systems.
 

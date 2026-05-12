@@ -1,0 +1,104 @@
+---
+/**
+ * PostImage — MDX image helper for blog posts.
+ *
+ * Import the asset, then render with <PostImage />.
+ *
+ * Props:
+ * - src (required): imported image from src/assets (ImageMetadata).
+ * - alt (required): accessible description.
+ * - title (optional): tooltip / title attribute.
+ * - natural (optional, default false): intrinsic size, centered; no full-width crop.
+ * - aspectRatio (optional): CSS ratio when natural is false, e.g. "16 / 9".
+ * - maxHeight (optional, default "500px"): max height when natural is false.
+ * - objectFit (optional, default "cover"): "cover" | "contain" when natural is false.
+ *
+ * Example:
+ * import PostImage from '@/components/mdx/PostImage'
+ * import banner from '@/assets/images/banners/ai/example.png'
+ *
+ * <PostImage src={banner} alt="Section banner" />
+ * <PostImage src={banner} alt="Book cover" natural />
+ * <PostImage src={banner} alt="Wide banner" aspectRatio="16 / 9" maxHeight="420px" />
+ */
+import { Image, type ImageMetadata } from 'astro:assets'
+
+interface Props {
+	src: ImageMetadata
+	alt: string
+	title?: string
+	aspectRatio?: string
+	maxHeight?: string
+	objectFit?: 'cover' | 'contain'
+	natural?: boolean
+}
+
+const {
+	src,
+	alt,
+	title,
+	aspectRatio,
+	maxHeight = '500px',
+	objectFit = 'cover',
+	natural = false
+} = Astro.props
+
+const imageClass = natural ? 'post-image post-image--natural' : 'post-image post-image--responsive'
+const imageStyle = natural
+	? {
+			width: 'auto',
+			maxWidth: `min(100%, ${src.width}px)`,
+			height: 'auto'
+		}
+	: {
+			maxHeight,
+			objectFit,
+			...(aspectRatio ? { aspectRatio } : {})
+		}
+---
+
+<figure
+	class:list={['post-image__figure not-prose', natural && 'post-image__figure--natural']}
+	style={natural ? { maxWidth: `min(100%, ${src.width}px)` } : undefined}
+>
+	<Image
+		src={src}
+		alt={alt}
+		title={title}
+		width={natural ? src.width : undefined}
+		height={natural ? src.height : undefined}
+		widths={natural ? undefined : [640, 960, 1280]}
+		sizes={natural ? undefined : '(min-width: 768px) 900px, 100vw'}
+		format='jpg'
+		class={imageClass}
+		style={imageStyle}
+	/>
+</figure>
+
+<style>
+	.post-image__figure {
+		margin-block: 2rem;
+		display: flex;
+		justify-content: center;
+	}
+
+	.post-image__figure--natural {
+		display: block;
+		width: fit-content;
+		max-width: 100%;
+		margin-inline: auto;
+	}
+
+	.post-image__figure--natural :global(.post-image--natural) {
+		display: block;
+		width: auto;
+		height: auto;
+		max-width: 100%;
+		border-radius: 0.375rem;
+	}
+
+	.post-image__figure :global(.post-image--responsive) {
+		width: 100%;
+		border-radius: 0.375rem;
+	}
+</style>
