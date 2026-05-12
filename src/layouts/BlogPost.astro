@@ -72,54 +72,75 @@ const articleDate = pubDate.toISOString()
 </BaseLayout>
 
 <script>
-	const fnObserver = () => {
-		function handleIntersection(
-			entries: IntersectionObserverEntry[],
-			observer: IntersectionObserver
-		) {
-			entries.forEach((entry) => {
-				const index = document.querySelector(`aside a[href="#${entry.target.id}"]`)
+	let tocObserver: IntersectionObserver | null = null
 
-				if (entry.isIntersecting) {
-					index?.classList.remove('bg-slate-200', 'dark:bg-slate-800') // remove bg
-					index?.classList.add(
-						'bg-indigo-600',
-						'dark:bg-indigo-700',
-						'text-white',
-						'font-bold',
-						'transition-colors',
-						'duration-200'
-					)
-				} else {
-					index?.classList.add('bg-slate-200', 'dark:bg-slate-800') // add bg
-					index?.classList.remove(
-						'bg-indigo-600',
-						'dark:bg-indigo-700',
-						'text-white',
-						'font-bold',
-						'transition-colors',
-						'duration-200'
-					)
-				}
-			})
+	const clearActiveLinks = () => {
+		document.querySelectorAll('.toc-link--active').forEach((link) => {
+			link.classList.remove('toc-link--active')
+			link.removeAttribute('aria-current')
+		})
+	}
+
+	const setActiveLink = (id: string) => {
+		const link = document.querySelector<HTMLAnchorElement>(`aside a.toc-link[href="#${id}"]`)
+		if (!link) {
+			return
 		}
+
+		clearActiveLinks()
+		link.classList.add('toc-link--active')
+		link.setAttribute('aria-current', 'location')
+	}
+
+	const initTocObserver = () => {
+		tocObserver?.disconnect()
+		clearActiveLinks()
 
 		const headings = document.querySelectorAll(
 			'div.prose h1, div.prose h2, div.prose h3, div.prose h4, div.prose h5, div.prose h6'
 		)
 
-		const options = {
-			root: null,
-			rootMargin: ' 15% 0px 0% 0px ',
-			threshold: 1
+		if (!headings.length) {
+			return
 		}
 
-		const observer = new IntersectionObserver(handleIntersection, options)
+		const visibleHeadings = new Set<string>()
+
+		tocObserver = new IntersectionObserver(
+			(entries) => {
+				entries.forEach((entry) => {
+					const id = entry.target.id
+					if (!id) {
+						return
+					}
+
+					if (entry.isIntersecting) {
+						visibleHeadings.add(id)
+					} else {
+						visibleHeadings.delete(id)
+					}
+				})
+
+				const activeHeading = Array.from(headings).find((heading) =>
+					visibleHeadings.has(heading.id)
+				)
+
+				if (activeHeading?.id) {
+					setActiveLink(activeHeading.id)
+				}
+			},
+			{
+				root: null,
+				rootMargin: '-20% 0px -70% 0px',
+				threshold: [0, 1]
+			}
+		)
 
 		headings.forEach((heading) => {
-			observer.observe(heading)
+			tocObserver?.observe(heading)
 		})
 	}
-	fnObserver()
-	document.addEventListener('astro:after-swap', fnObserver)
+
+	initTocObserver()
+	document.addEventListener('astro:after-swap', initTocObserver)
 </script>

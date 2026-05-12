@@ -14,18 +14,21 @@ export interface Props {
 }
 ---
 
-<li class='flex flex-col'>
+<li class='toc-item'>
 	<a
 		href={'#' + heading.slug}
 		class={cn(
-			`bg-slate-200 dark:bg-slate-800 dark:hover:bg-indigo-400 hover:bg-indigo-300 hover:text-white  py-1 px-4 dark:text-white rounded-full mb-2 first-letter:uppercase w-fit line-clamp-2`
+			'toc-link',
+			heading.depth >= 4 && 'toc-link--nested',
+			heading.depth === 3 && 'toc-link--child'
 		)}
 	>
-		{heading.text}
+		<span class='toc-link__indicator' aria-hidden='true'></span>
+		<span class='toc-link__text'>{heading.text}</span>
 	</a>
 	{
 		heading.subheadings.length > 0 && (
-			<ul class='ml-3'>
+			<ul class='toc-item__children'>
 				{heading.subheadings.map((subheading) => (
 					<Astro.self heading={subheading} />
 				))}
@@ -33,3 +36,102 @@ export interface Props {
 		)
 	}
 </li>
+
+<style>
+	.toc-item {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.toc-item__children {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		margin: 0.1rem 0 0.2rem;
+		padding-left: 0.65rem;
+		border-left: 1px solid rgba(79, 70, 229, 0.14);
+	}
+
+	:global(html.dark) .toc-item__children {
+		border-left-color: rgba(165, 180, 252, 0.18);
+	}
+
+	.toc-link {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.65rem;
+		border-radius: 0.75rem;
+		padding: 0.55rem 0.7rem;
+		font-size: 0.92rem;
+		font-weight: 500;
+		line-height: 1.45;
+		color: rgba(15, 23, 42, 0.78);
+		text-decoration: none;
+		transition:
+			background-color 180ms ease,
+			color 180ms ease,
+			box-shadow 180ms ease,
+			transform 180ms ease;
+	}
+
+	:global(html.dark) .toc-link {
+		color: rgba(248, 250, 252, 0.78);
+	}
+
+	.toc-link:hover {
+		background: rgba(79, 70, 229, 0.08);
+		color: rgb(15 23 42);
+		transform: translateX(1px);
+	}
+
+	:global(html.dark) .toc-link:hover {
+		background: rgba(99, 102, 241, 0.16);
+		color: rgb(248 250 252);
+	}
+
+	.toc-link--child {
+		font-size: 0.84rem;
+	}
+
+	.toc-link--nested {
+		font-size: 0.8rem;
+		color: rgba(15, 23, 42, 0.66);
+	}
+
+	:global(html.dark) .toc-link--nested {
+		color: rgba(248, 250, 252, 0.66);
+	}
+
+	.toc-link__indicator {
+		width: 0.2rem;
+		flex-shrink: 0;
+		align-self: stretch;
+		border-radius: 9999px;
+		background: transparent;
+		transition: background-color 180ms ease;
+	}
+
+	.toc-link__text {
+		display: -webkit-box;
+		overflow: hidden;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		text-wrap: balance;
+	}
+
+	:global(.toc-link--active) {
+		background: rgba(79, 70, 229, 0.12);
+		color: rgb(49 46 129);
+		box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.12);
+	}
+
+	:global(html.dark .toc-link--active) {
+		background: rgba(99, 102, 241, 0.18);
+		color: rgb(224 231 255);
+		box-shadow: inset 0 0 0 1px rgba(129, 140, 248, 0.18);
+	}
+
+	:global(.toc-link--active) .toc-link__indicator {
+		background: linear-gradient(180deg, rgb(99 102 241), rgb(79 70 229));
+	}
+</style>
