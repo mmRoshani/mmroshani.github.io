@@ -1,0 +1,1799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mmRoshani.ir | vLLM Inference Observatory</title>
+
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css"
+  />
+  <link
+    href="https://fonts.googleapis.com/icon?family=Material+Icons"
+    rel="stylesheet"
+  />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #07101e;
+      --text: #f4f8ff;
+      --muted: #9baecc;
+      --border: rgba(203, 222, 255, 0.16);
+
+      --blue: #68a7ff;
+      --purple: #af82ff;
+      --cyan: #42ddd1;
+      --green: #41db8a;
+      --yellow: #f7c65e;
+      --orange: #ff9d45;
+      --red: #ff637d;
+      --pink: #ed7bc9;
+
+      --glass: rgba(18, 32, 55, 0.56);
+      --glass-strong: rgba(20, 35, 61, 0.78);
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow-x: hidden;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 3% 3%, rgba(80, 127, 255, 0.26), transparent 25%),
+        radial-gradient(circle at 93% 4%, rgba(180, 112, 255, 0.20), transparent 27%),
+        radial-gradient(circle at 49% 96%, rgba(41, 211, 204, 0.12), transparent 30%),
+        linear-gradient(140deg, #07101e 0%, #0b1530 48%, #11102b 100%);
+      font-family: "Inter", Arial, sans-serif;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      z-index: -1;
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(100px);
+      pointer-events: none;
+    }
+
+    body::before {
+      width: 440px;
+      height: 440px;
+      top: 20%;
+      left: -170px;
+      background: rgba(72, 152, 255, 0.14);
+    }
+
+    body::after {
+      width: 420px;
+      height: 420px;
+      right: -180px;
+      bottom: 0;
+      background: rgba(192, 110, 255, 0.13);
+    }
+
+    .dashboard {
+      width: min(1820px, 95%);
+      margin: 0 auto;
+      padding: 28px 0 42px;
+    }
+
+    /* Header */
+
+    .dashboard-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 18px;
+      padding: 18px 21px;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background: rgba(21, 35, 61, 0.50);
+      backdrop-filter: blur(28px) saturate(145%);
+      -webkit-backdrop-filter: blur(28px) saturate(145%);
+      box-shadow: var(--shadow);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 50px;
+      height: 50px;
+      flex: 0 0 50px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      border-radius: 16px;
+      color: white;
+      font-size: 25px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #5d9dff, #a567ff);
+      box-shadow:
+        0 10px 30px rgba(70, 142, 255, 0.28),
+        inset 0 1px 1px rgba(255, 255, 255, 0.33);
+    }
+
+    .brand-title {
+      margin: 0;
+      color: white;
+      font-size: 22px;
+      line-height: 1.12;
+      font-weight: 800;
+      letter-spacing: -0.7px;
+      background: linear-gradient(90deg, #ffffff 10%, #bed6ff 55%, #d5b7ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-subtitle {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .glass-select,
+    .glass-button {
+      height: 42px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      outline: none;
+      color: white;
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .glass-select {
+      min-width: 145px;
+      padding: 0 12px;
+      background: rgba(6, 15, 33, 0.46);
+    }
+
+    .glass-select option {
+      color: #10192c;
+      background: white;
+    }
+
+    .glass-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 15px;
+      border-color: rgba(178, 207, 255, 0.26);
+      background: linear-gradient(135deg, rgba(92, 154, 255, 0.90), rgba(127, 104, 255, 0.90));
+      box-shadow: 0 10px 25px rgba(67, 121, 255, 0.19);
+    }
+
+    .glass-select:hover,
+    .glass-button:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.48);
+      filter: brightness(1.1);
+    }
+
+    .live-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 15px 4px 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .live-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 12px var(--green);
+      animation: pulse 1.7s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(0.65); opacity: 0.55; }
+    }
+
+    /* Sections */
+
+    .section-heading {
+      margin: 37px 2px 16px;
+    }
+
+    .eyebrow {
+      color: #83b8ff;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+    }
+
+    .section-heading h2 {
+      margin: 6px 0 5px;
+      color: white;
+      font-size: 21px;
+      font-weight: 750;
+      letter-spacing: -0.45px;
+    }
+
+    .section-heading p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    /* Grids */
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .summary-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid-latency {
+      grid-template-columns: 1.5fr 1fr;
+    }
+
+    .grid-token {
+      grid-template-columns: 1.45fr .78fr .78fr;
+    }
+
+    .grid-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    /* Glass Cards */
+
+    .glass-card {
+      position: relative;
+      overflow: hidden;
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background:
+        linear-gradient(125deg, rgba(255,255,255,0.10), rgba(255,255,255,0.025)),
+        var(--glass);
+      backdrop-filter: blur(24px) saturate(140%);
+      -webkit-backdrop-filter: blur(24px) saturate(140%);
+      box-shadow: var(--shadow);
+      transition:
+        transform 0.28s cubic-bezier(.2,.8,.2,1),
+        border-color 0.28s ease,
+        box-shadow 0.28s ease,
+        background 0.28s ease;
+    }
+
+    .glass-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      background: linear-gradient(
+        120deg,
+        transparent 25%,
+        rgba(255,255,255,0.12) 48%,
+        transparent 70%
+      );
+      transform: translateX(-120%);
+      transition: transform 0.6s ease, opacity 0.2s ease;
+    }
+
+    .glass-card:hover {
+      z-index: 2;
+      transform: translateY(-6px) scale(1.012);
+      border-color: rgba(202, 221, 255, 0.38);
+      background:
+        linear-gradient(125deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04)),
+        var(--glass-strong);
+      box-shadow:
+        0 25px 75px rgba(0, 0, 0, 0.38),
+        0 0 0 1px rgba(134, 182, 255, 0.06);
+    }
+
+    .glass-card:hover::before {
+      opacity: 1;
+      transform: translateX(120%);
+    }
+
+    .metric-card {
+      display: flex;
+      flex-direction: column;
+      min-height: 204px;
+      padding: 18px;
+    }
+
+    .chart-card {
+      min-height: 350px;
+      padding: 18px;
+    }
+
+    .chart-card.compact {
+      min-height: 306px;
+    }
+
+    .chart-card.large {
+      min-height: 375px;
+    }
+
+    .card-top,
+    .chart-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .metric-name,
+    .chart-name {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .chart-description {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 10.5px;
+      line-height: 1.5;
+    }
+
+    .metric-value {
+      margin-top: 19px;
+      color: white;
+      font-size: 30px;
+      line-height: 1;
+      font-weight: 800;
+      letter-spacing: -1.1px;
+    }
+
+    .metric-unit {
+      margin-left: 3px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+
+    .metric-trend {
+      margin-top: 7px;
+      color: #83eab2;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .metric-description {
+      margin: auto 0 0;
+      padding-top: 13px;
+      color: var(--muted);
+      font-size: 10.5px;
+      line-height: 1.55;
+    }
+
+    /* Labels / states */
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 9px;
+      border-radius: 100px;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .45px;
+      white-space: nowrap;
+    }
+
+    .chip-good {
+      color: #97f6c1;
+      border: 1px solid rgba(65, 219, 138, 0.20);
+      background: rgba(65, 219, 138, 0.13);
+    }
+
+    .chip-warn {
+      color: #ffe08b;
+      border: 1px solid rgba(247, 198, 94, 0.22);
+      background: rgba(247, 198, 94, 0.13);
+    }
+
+    .chip-bad {
+      color: #ffadbb;
+      border: 1px solid rgba(255, 99, 125, 0.22);
+      background: rgba(255, 99, 125, 0.14);
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 6px;
+      overflow: hidden;
+      margin-top: 14px;
+      border: 1px solid rgba(255, 255, 255, .03);
+      border-radius: 100px;
+      background: rgba(6, 14, 31, 0.58);
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--blue), var(--cyan));
+      box-shadow: 0 0 13px rgba(68, 214, 210, .26);
+    }
+
+    .fill-warn {
+      background: linear-gradient(90deg, var(--yellow), var(--orange));
+      box-shadow: 0 0 13px rgba(255, 159, 69, .24);
+    }
+
+    .fill-bad {
+      background: linear-gradient(90deg, var(--orange), var(--red));
+      box-shadow: 0 0 13px rgba(255, 99, 125, .24);
+    }
+
+    /* Charts */
+
+    .chart-canvas {
+      position: relative;
+      height: 252px;
+      margin-top: 17px;
+    }
+
+    .chart-canvas.short {
+      height: 205px;
+    }
+
+    .latency-stats {
+      display: grid;
+      gap: 18px;
+      margin-top: 31px;
+      padding: 0 5px;
+    }
+
+    .latency-stat-top,
+    .small-stat-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 11px;
+    }
+
+    .latency-stat-top span,
+    .small-stat-top span {
+      color: var(--muted);
+    }
+
+    .latency-stat-top strong,
+    .small-stat-top strong {
+      color: white;
+      font-size: 12px;
+    }
+
+    .scheduler-summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .scheduler-summary > div {
+      padding: 10px;
+      border: 1px solid rgba(194, 216, 255, .10);
+      border-radius: 12px;
+      background: rgba(4, 14, 31, .25);
+    }
+
+    .scheduler-summary span {
+      display: block;
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    .scheduler-summary strong {
+      display: block;
+      margin-top: 5px;
+      color: white;
+      font-size: 19px;
+    }
+
+    /* Heatmap */
+
+    .heatmap {
+      display: grid;
+      grid-template-columns: repeat(24, 1fr);
+      gap: 5px;
+      margin-top: 28px;
+    }
+
+    .heat-cell {
+      height: 29px;
+      border: 1px solid rgba(255, 255, 255, .04);
+      border-radius: 5px;
+      cursor: help;
+      transition: transform .18s ease, outline .18s ease;
+    }
+
+    .heat-cell:hover {
+      z-index: 3;
+      transform: scale(1.17);
+      outline: 1px solid rgba(255,255,255,.85);
+    }
+
+    .heatmap-label {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    /* Table */
+
+    .table-card {
+      padding: 18px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: 17px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    th {
+      padding: 11px 10px;
+      color: var(--muted);
+      border-bottom: 1px solid rgba(202, 222, 255, .14);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .65px;
+      text-align: left;
+      text-transform: uppercase;
+    }
+
+    td {
+      padding: 13px 10px;
+      border-bottom: 1px solid rgba(202, 222, 255, .09);
+    }
+
+    .table-bar {
+      width: 150px;
+      height: 7px;
+      overflow: hidden;
+      border-radius: 99px;
+      background: rgba(4, 13, 29, .56);
+    }
+
+    .table-bar > span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+    }
+
+    /* Footer */
+
+    .dashboard-footer {
+      margin-top: 36px;
+      padding: 20px 22px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(14, 26, 48, 0.48);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+      box-shadow: var(--shadow);
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .footer-link {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 13px;
+      overflow: hidden;
+      border: 1px solid rgba(154, 193, 255, .24);
+      border-radius: 12px;
+      color: #dceaff;
+      font-weight: 700;
+      text-decoration: none;
+      background: rgba(87, 132, 220, 0.10);
+      transition: transform .22s ease, color .22s ease, background .22s ease, box-shadow .22s ease;
+    }
+
+    .footer-link::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -115%;
+      width: 70%;
+      height: 100%;
+      transform: skewX(-25deg);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
+      transition: left .55s ease;
+    }
+
+    .footer-link:hover {
+      color: white;
+      transform: translateY(-3px) scale(1.03);
+      border-color: rgba(210, 230, 255, .60);
+      background: linear-gradient(135deg, rgba(91, 155, 255, .33), rgba(176, 126, 255, .28));
+      box-shadow: 0 13px 35px rgba(71, 132, 255, .20);
+    }
+
+    .footer-link:hover::before {
+      left: 140%;
+    }
+
+    /* Responsive */
+
+    @media (max-width: 1300px) {
+      .summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .grid-token { grid-template-columns: 1fr 1fr; }
+      .grid-token > :first-child { grid-column: span 2; }
+    }
+
+    @media (max-width: 900px) {
+      .grid-2,
+      .grid-latency,
+      .grid-token,
+      .grid-4 {
+        grid-template-columns: 1fr;
+      }
+
+      .grid-token > :first-child { grid-column: auto; }
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 560px) {
+      .dashboard { width: min(94%, 560px); }
+      .dashboard-header { padding: 16px; }
+      .header-controls { width: 100%; }
+      .glass-select, .glass-button { flex: 1; }
+      .summary-grid { grid-template-columns: 1fr; }
+      .brand-title { font-size: 19px; }
+      .heatmap { grid-template-columns: repeat(12, 1fr); }
+      .chart-card { min-height: 325px; }
+      .footer-inner { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="dashboard">
+    <header class="dashboard-header">
+      <div class="brand">
+        <div>
+          <h1 class="brand-title"> LLM Inference Observatory</h1>
+          <p class="brand-subtitle">vLLM performance · reliability · scheduler · cache · H200 GPU telemetry</p>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <select class="glass-select" aria-label="Select time range">
+          <option>Last 1 hour</option>
+          <option>Last 6 hours</option>
+          <option selected>Last 24 hours</option>
+          <option>Last 7 days</option>
+        </select>
+
+        <a
+        class="footer-link"
+        href="https://mmRoshani.ir/post/ai/deep-dive-into-vllm-inference-metrics"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Visit mmRoshani.ir"
+      >
+        <i class="material-icons" style="font-size:16px">language</i>
+        Learn More!
+        <i class="material-icons" style="font-size:15px">north_east</i>
+      </a>
+      </div>
+    </header>
+
+    <div class="live-line">
+      <span class="live-dot"></span>
+      <span> <b>Preiodic Reload </b> · last updated <strong id="updatedAt" style="color:#dceaff"></strong> · every 8 seconds</span>
+    </div>
+
+    <!-- 01. TOP-LINE SUMMARY -->
+    <section>
+      <div class="section-heading">
+        <div class="eyebrow">01 · Top-line Summary</div>
+        <h2>Service at a glance</h2>
+        <p>Core availability, scheduler efficiency, active demand, user response speed and KV Cache preemption risk.</p>
+      </div>
+
+      <div class="grid summary-grid">
+        <article class="glass-card metric-card">
+          <div class="card-top">
+            <span class="metric-name">Success Rate</span>
+            <span class="status-chip chip-good" id="successChip">NORMAL</span>
+          </div>
+          <div class="metric-value"><span id="successRate">99.84</span><span class="metric-unit">%</span></div>
+          <div class="metric-trend">↑ +0.18% compared with prior period</div>
+          <p class="metric-description">
+            Successful requests are only normal completions where <b>finished_reason="stop"</b>.
+          </p>
+        </article>
+
+        <article class="glass-card metric-card">
+          <div class="card-top">
+            <span class="metric-name">Active Requests</span>
+            <span class="status-chip chip-good">LIVE</span>
+          </div>
+          <div class="metric-value"><span id="activeRequests">64</span><span class="metric-unit">requests</span></div>
+          <div class="metric-trend">↑ +8.4% traffic volume</div>
+          <p class="metric-description">
+            Current work in the serving engine: requests in <b>Running</b> plus <b>Waiting</b> states.
+          </p>
+        </article>
+
+        <article class="glass-card metric-card">
+          <div class="card-top">
+            <span class="metric-name">System Efficiency</span>
+            <span class="status-chip chip-good" id="efficiencyChip">NORMAL</span>
+          </div>
+          <div class="metric-value"><span id="efficiency">89</span><span class="metric-unit">%</span></div>
+          <div class="progress-track"><div class="progress-fill" id="efficiencyProgress" style="width:89%"></div></div>
+          <p class="metric-description">
+            Running / (Running + Waiting). Below 70% indicates scheduler overload and queue pressure.
+          </p>
+        </article>
+
+        <article class="glass-card metric-card">
+          <div class="card-top">
+            <span class="metric-name">TTFT P99</span>
+            <span class="status-chip chip-good" id="ttftChip">HEALTHY</span>
+          </div>
+          <div class="metric-value"><span id="ttftP99">0.86</span><span class="metric-unit">sec</span></div>
+          <div class="metric-trend">↓ -6.2% faster first-token delivery</div>
+          <p class="metric-description">
+            99th percentile Time To First Token. The user-facing initial-response speed target is under 1 second.
+          </p>
+        </article>
+
+        <article class="glass-card metric-card">
+          <div class="card-top">
+            <span class="metric-name">Preemption Rate</span>
+            <span class="status-chip chip-bad" id="preemptionChip">CRITICAL</span>
+          </div>
+          <div class="metric-value"><span id="preemptionRate">0.19</span><span class="metric-unit">%</span></div>
+          <div class="progress-track"><div class="progress-fill fill-bad" id="preemptionProgress" style="width:19%"></div></div>
+          <p class="metric-description">
+            Running requests halted due to insufficient KV Cache. Any non-zero value should be investigated immediately.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <!-- 02. LATENCY -->
+    <section>
+      <div class="section-heading">
+        <div class="eyebrow">02 · Latency & User Experience</div>
+        <h2>End-to-end latency and inference behavior</h2>
+        <p>Separate request tail latency from prefill and decode bottlenecks to identify the correct scaling or optimization action.</p>
+      </div>
+
+      <div class="grid grid-latency">
+        <article class="glass-card chart-card">
+          <div class="chart-top">
+            <div>
+              <div class="chart-name">E2E Request Latency</div>
+              <p class="chart-description">Total time from request acceptance until response completion. P99 spikes warrant bottleneck analysis.</p>
+            </div>
+            <span class="status-chip chip-warn">P99 WATCH</span>
+          </div>
+          <div class="chart-canvas"><canvas id="latencyChart"></canvas></div>
+        </article>
+
+        <article class="glass-card chart-card">
+          <div class="chart-top">
+            <div>
+              <div class="chart-name">Latency Percentile Summary</div>
+              <p class="chart-description">Current E2E latency distribution for active inference traffic.</p>
+            </div>
+          </div>
+
+          <div class="latency-stats">
+            <div>
+              <div class="latency-stat-top"><span>P50 request latency</span><strong id="p50Latency">728 ms</strong></div>
+              <div class="progress-track"><div class="progress-fill" id="p50Progress" style="width:36%"></div></div>
+            </div>
+
+            <div>
+              <div class="latency-stat-top"><span>P95 request latency</span><strong id="p95Latency">1,260 ms</strong></div>
+              <div class="progress-track"><div class="progress-fill fill-warn" id="p95Progress" style="width:63%"></div></div>
+            </div>
+
+            <div>
+              <div class="latency-stat-top"><span>P99 request latency</span><strong id="p99Latency">1,670 ms</strong></div>
+              <div class="progress-track"><div class="progress-fill fill-bad" id="p99Progress" style="width:84%"></div></div>
+            </div>
+          </div>
+
+          <p class="metric-description">
+            If P50 remains stable while P99 rises, investigate queue contention, unusually long prompts, cache pressure, retries and load imbalance.
+          </p>
+        </article>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:16px">
+        <article class="glass-card chart-card compact">
+          <div class="chart-top">
+            <div>
+              <div class="chart-name">Inference Stage Breakdown</div>
+              <p class="chart-description">Prefill is input processing. Decode is output-token generation.</p>
+            </div>
+          </div>
+          <div class="chart-canvas short"><canvas id="stageChart"></canvas></div>
+        </article>
+
+        <article class="glass-card chart-card compact">
+          <div class="chart-top">
+            <div>
+              <div class="chart-name">TTFT vs TPOT</div>
+              <p class="chart-description">High TTFT points to a Prefill bottleneck. High TPOT points to a Decode bottleneck.</p>
+            </div>
+          </div>
+          <div class="chart-canvas short"><canvas id="ttftTpotChart"></canvas></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 03. TOKEN THROUGHPUT -->
+    <section>
+      <div class="section-heading">
+        <div class="eyebrow">03 · Token Throughput & Workload</div>
+        <h2>Token flow, cache savings and prompt distribution</h2>
+        <p>Measure workload shape to understand whether your serving fleet behaves like a RAG, summarization or long-form generation system.</p>
+      </div>
+
+      <div class="grid grid-token">
+        <article class="glass-card chart-card">
+          <div class="chart-top">
+            <div>
+              <div class="chart-name">Token Throughput</div>
+              <p class="chart-description">Prompt input tokens and generated output tokens processed per second.</p>
+            </div>
+          </div>
+          <div class="chart-canvas"><canvas id="tokenChart"></canvas></div>
+        </article>
+
+        <article class="glass-card metric-card">
+          <div class="card-top">
+            <span class="metric-name">Token I/O Ratio</span>
+            <span class="status-chip chip-good">RAG-LIKE</span>
+          </div>
+          <div class="metric-value"><span id="ioRatio">1.92</span><span class="metric-unit">input : output</span></div>
+          <div class="progress-track"><div class="progress-fill" id="ioProgress" style="width:64%"></div></div>
+          <p class="metric-description">
+            Higher values indicate long prompts with short outputs, typical of RAG and context-heavy workflows.
+          </p>
+        </article>
+
+        <article class="glass-card metric-card">
+          <div class="card-top">
+            <span class="metric-name">Prefix Cache Savings</span>
+            <span class="status-chip chip-good">EFFICIENT</span>
+          </div>
+          <div class="metric-value"><span id="prefixSavings">55</span><span class="metric-unit">%</span></div>
+          <div class="progress-track"><div class="progress-fill" id="savingsProgress" style="width:55%"></div></div>
+          <p class="metric-description">
+            Saved Prefill work: (1 − actual computations / total input computations) × 100.
+          </p>
+        </article>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:16px">
+        <article class="glass-card chart-card compact">
+          <div class="chart-top">
+            <div>
+              <div class="chart-name">Request Length Heatmap · Prompt Tokens</div>
+              <p class="chart-description">Darker ranges represent higher request counts at that prompt-token length.</p>
+            </div>
+          </div>
+          <div class="heatmap" id="heatmap"></div>
+          <div class="heatmap-label">
+            <span>0 tokens</span>
+            <span>12,288+ tokens</span>
+          </div>
+        </article>
+
+        <article class="glass-card chart-card compact">
+          <div class="chart-top">
+            <div>
+              <div class="chart-name">Request Queue Time</div>
+              <p class="chart-description">Time requests spend waiting for scheduler and GPU execution capacity.</p>
+            </div>
+            <span class="status-chip chip-warn">SCALE WATCH</span>
+          </div>
+          <div class="chart-canvas short"><canvas id="queueChart"></canvas></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 04. ENGINE / CACHE -->
+    <section>
+      <div class="section-heading">
+        <div class="eyebrow">04 · Engine Internal & Cache</div>
+        <h2>KV Cache capacity and scheduler state</h2>
+        <p>Early capacity signals that help prevent queue growth, swapping and disruptive request preemption.</p>
+      </div>
+
+      <div class="grid grid-4">
+        <article class="glass-card metric-card">
+          <div class="card-top">
+            <span class="metric-name">GPU KV Cache Usage</span>
+            <span class="status-chip chip-warn" id="kvChip">WARNING</span>
+          </div>
+          <div class="metric-value"><span id="kvUsage">84</span><span class="metric-unit">%</span></div>
+          <div class="progress-track"><div class="progress-fill fill-warn" id="kvProgress" style="width:84%"></div></div>
+          <p class="metric-description">Warning above 80%; preemption risk becomes critical when KV Cache use exceeds 95%.</p>
+        </article>
+
+        <article class="glass-card metric-card">
+          <div class="card-top">
+            <span class="metric-name">Prefix Cache Hit Rate</span>
+            <span class="status-chip chip-good">EFFICIENT</span>
+          </div>
+          <div class="metric-value"><span id="prefixHit">78</span><span class="metric-unit">%</span></div>
+          <div class="progress-track"><div class="progress-fill" id="prefixHitProgress" style="width:78%"></div></div>
+          <p class="metric-description">Hit rate for reusing system prompts, shared few-shot examples and common request prefixes.</p>
+        </article>
+
+        <article class="glass-card metric-card">
+          <div class="card-top">
+            <span class="metric-name">Running Requests</span>
+            <span class="status-chip chip-good">GPU ACTIVE</span>
+          </div>
+          <div class="metric-value"><span id="runningRequests">56</span><span class="metric-unit">requests</span></div>
+          <p class="metric-description">Requests actively being processed by the GPU inference engine.</p>
+        </article>
+
+        <article class="glass-card metric-card">
+          <div class="card-top">
+            <span class="metric-name">Waiting Requests</span>
+            <span class="status-chip chip-warn">QUEUE</span>
+          </div>
+          <div class="metric-value"><span id="waitingRequests">7</span><span class="metric-unit">requests</span></div>
+          <p class="metric-description">Requests waiting in the scheduler queue for GPU capacity and token-generation slots.</p>
+        </article>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:16px">
+        <article class="glass-card chart-card large">
+          <div class="chart-top">
+            <div>
+              <div class="chart-name">Scheduler State</div>
+              <p class="chart-description">Running requests infer on GPU; Waiting requests queue; Swapped requests move to memory.</p>
+            </div>
+          </div>
+          <div class="chart-canvas"><canvas id="schedulerChart"></canvas></div>
+
+          <div class="scheduler-summary">
+            <div><span>Running</span><strong id="schedulerRunning">56</strong></div>
+            <div><span>Waiting</span><strong id="schedulerWaiting">7</strong></div>
+            <div><span>Swapped</span><strong id="schedulerSwapped">2</strong></div>
+          </div>
+        </article>
+
+        <article class="glass-card chart-card large">
+          <div class="chart-top">
+            <div>
+              <div class="chart-name">GPU Cache and Process Pressure</div>
+              <p class="chart-description">KV Cache usage and process RSS memory trends over the selected time range.</p>
+            </div>
+          </div>
+          <div class="chart-canvas"><canvas id="cachePressureChart"></canvas></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 05. HEALTH -->
+    <section>
+      <div class="section-heading">
+        <div class="eyebrow">05 · System Health & Reliability</div>
+        <h2>Memory behavior and request outcomes</h2>
+        <p>Use these panels to detect Python memory pressure, abnormal completion patterns and request failures.</p>
+      </div>
+
+      <div class="grid grid-2">
+        <article class="glass-card chart-card">
+          <div class="chart-top">
+            <div>
+              <div class="chart-name">Python GC & Memory</div>
+              <p class="chart-description">Frequent Python GC and continuously rising RSS can indicate memory leaks or process pressure.</p>
+            </div>
+          </div>
+          <div class="chart-canvas"><canvas id="gcMemoryChart"></canvas></div>
+        </article>
+
+        <article class="glass-card chart-card">
+          <div class="chart-top">
+            <div>
+              <div class="chart-name">Finish Reason Distribution</div>
+              <p class="chart-description">stop is normal EOS; length reached maximum output tokens; abort means a terminated request.</p>
+            </div>
+          </div>
+          <div class="chart-canvas"><canvas id="finishChart"></canvas></div>
+        </article>
+      </div>
+
+      <div class="grid" style="margin-top:16px">
+        <article class="glass-card chart-card">
+          <div class="chart-top">
+            <div>
+              <div class="chart-name">Throughput vs Success</div>
+              <p class="chart-description">Total requests should closely track successful stop-completed requests. A persistent gap represents failures or abnormal exits.</p>
+            </div>
+          </div>
+          <div class="chart-canvas"><canvas id="successThroughputChart"></canvas></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 06. INFRASTRUCTURE -->
+    <section>
+      <div class="section-heading">
+        <div class="eyebrow">06 · Infrastructure & Load Balancing</div>
+        <h2>Instance distribution and H200 DCGM telemetry</h2>
+        <p>Validate load-balancer fairness and observe raw GPU utilization and framebuffer allocation across the serving fleet.</p>
+      </div>
+
+      <div class="grid grid-2">
+        <article class="glass-card chart-card">
+          <div class="chart-top">
+            <div>
+              <div class="chart-name">Instance Request Distribution · Load Balancer</div>
+              <p class="chart-description">Live request assignment by serving instance. A skew can create an avoidable bottleneck.</p>
+            </div>
+          </div>
+          <div class="chart-canvas"><canvas id="instanceChart"></canvas></div>
+        </article>
+
+        <article class="glass-card chart-card">
+          <div class="chart-top">
+            <div>
+              <div class="chart-name">H200 GPU Utilization · DCGM</div>
+              <p class="chart-description">Raw GPU compute saturation from DCGM telemetry across the active H200 devices.</p>
+            </div>
+          </div>
+          <div class="chart-canvas"><canvas id="gpuUtilChart"></canvas></div>
+        </article>
+      </div>
+
+      <article class="glass-card table-card" style="margin-top:16px">
+        <div class="chart-top">
+          <div>
+            <div class="chart-name">H200 VRAM Allocation · DCGM_FI_DEV_FB_USED</div>
+            <p class="chart-description">Framebuffer memory actively consumed by each H200 GPU. Higher VRAM allocation increases KV Cache pressure.</p>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>GPU Device</th>
+                <th>Serving Instance</th>
+                <th>DCGM_FI_DEV_FB_USED</th>
+                <th>VRAM Allocation</th>
+                <th>Capacity Signal</th>
+              </tr>
+            </thead>
+            <tbody id="vramTable"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <footer class="dashboard-footer">
+      <div class="footer-inner">
+        <span>LLM Inference Observatory · Simulated vLLM / Prometheus / DCGM metrics · Glass UI dashboard</span>
+
+        <a
+          class="footer-link"
+          href="https://mmRoshani.ir"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Visit mmRoshani.ir"
+        >
+          <i class="material-icons" style="font-size:16px">language</i>
+          Built by mmRoshani.ir
+          <i class="material-icons" style="font-size:15px">north_east</i>
+        </a>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    Chart.defaults.color = "#9baecc";
+    Chart.defaults.borderColor = "rgba(183, 207, 255, 0.14)";
+    Chart.defaults.font.family = "Inter, Arial, sans-serif";
+    Chart.defaults.font.size = 10;
+
+    const COLORS = {
+      blue: "#68a7ff",
+      purple: "#af82ff",
+      cyan: "#42ddd1",
+      green: "#41db8a",
+      yellow: "#f7c65e",
+      orange: "#ff9d45",
+      red: "#ff637d",
+      muted: "#9baecc"
+    };
+
+    const chartInstances = {};
+
+    const random = (min, max) => Math.random() * (max - min) + min;
+    const int = (min, max) => Math.round(random(min, max));
+    const clamp = (number, min, max) => Math.min(max, Math.max(min, number));
+
+    function makeLabels() {
+      return Array.from({ length: 18 }, (_, index) => {
+        const hour = String((index + 6) % 24).padStart(2, "0");
+        return hour + ":00";
+      });
+    }
+
+    function makeSeries(min, max, decimalPlaces = 0) {
+      return Array.from({ length: 18 }, () => {
+        const value = random(min, max);
+        return decimalPlaces ? Number(value.toFixed(decimalPlaces)) : Math.round(value);
+      });
+    }
+
+    function destroyCharts() {
+      Object.values(chartInstances).forEach(chart => chart.destroy());
+    }
+
+    function lineOptions(unit = "") {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: {
+            labels: {
+              boxWidth: 8,
+              boxHeight: 8,
+              usePointStyle: true,
+              pointStyle: "circle",
+              padding: 16
+            }
+          },
+          tooltip: {
+            backgroundColor: "rgba(9, 18, 37, .94)",
+            borderColor: "rgba(184, 214, 255, .22)",
+            borderWidth: 1,
+            padding: 11,
+            titleColor: "#fff",
+            bodyColor: "#d9e8ff",
+            callbacks: {
+              label: context => `${context.dataset.label}: ${context.raw}${unit}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { maxTicksLimit: 7 }
+          },
+          y: {
+            beginAtZero: true,
+            grid: { color: "rgba(183, 207, 255, .10)" }
+          }
+        }
+      };
+    }
+
+    function generateData() {
+      const running = int(47, 69);
+      const waiting = int(3, 15);
+      const swapped = int(0, 4);
+      const p99 = int(1230, 1900);
+      const finishAbort = int(1, 5);
+      const finishLength = int(6, 13);
+      const requestSeries = makeSeries(3900, 6500);
+
+      return {
+        running,
+        waiting,
+        swapped,
+        active: running + waiting,
+        efficiency: Math.round((running / (running + waiting)) * 100),
+        successRate: Number(random(99.51, 99.96).toFixed(2)),
+        ttftP99: Number(random(0.62, 1.12).toFixed(2)),
+        preemptionRate: Number(random(0.02, 0.62).toFixed(2)),
+        p50: int(610, 850),
+        p95: Math.round(p99 * 0.77),
+        p99,
+        prefill: int(37, 59),
+        ioRatio: Number(random(1.42, 2.44).toFixed(2)),
+        prefixSavings: int(38, 68),
+        kvUsage: int(67, 92),
+        prefixHit: int(66, 90),
+
+        p50Series: makeSeries(580, 850),
+        p99Series: makeSeries(1190, 1960),
+        ttftSeries: makeSeries(0.42, 1.10, 2),
+        tpotSeries: makeSeries(0.025, 0.062, 3),
+        inputTokens: makeSeries(2750, 5750),
+        outputTokens: makeSeries(1350, 3350),
+        queueSeries: makeSeries(40, 340),
+        runningSeries: makeSeries(43, 71),
+        waitingSeries: makeSeries(2, 18),
+        swappedSeries: makeSeries(0, 5),
+        kvSeries: makeSeries(62, 93),
+        rssSeries: makeSeries(8.0, 11.7, 1),
+        gcSeries: makeSeries(10, 43),
+
+        finishStop: 100 - finishAbort - finishLength,
+        finishLength,
+        finishAbort,
+
+        requestSeries,
+        successfulSeries: requestSeries.map(v => Math.round(v * random(0.992, 0.999))),
+
+        instanceLoad: [int(18, 31), int(18, 30), int(18, 31), int(17, 30)],
+        gpuUtil: [int(61, 92), int(58, 89), int(64, 94), int(60, 90)],
+        vramUsage: [int(65, 87), int(63, 87), int(71, 94), int(64, 89)]
+      };
+    }
+
+    function setText(id, value) {
+      document.getElementById(id).textContent = value;
+    }
+
+    function setProgress(id, value, style = "") {
+      const el = document.getElementById(id);
+      el.style.width = clamp(value, 0, 100) + "%";
+      el.className = `progress-fill ${style}`;
+    }
+
+    function setChip(id, stateClass, text) {
+      const chip = document.getElementById(id);
+      chip.className = `status-chip ${stateClass}`;
+      chip.textContent = text;
+    }
+
+    function renderHeatmap() {
+      const heatmap = document.getElementById("heatmap");
+      heatmap.innerHTML = "";
+
+      for (let index = 0; index < 72; index++) {
+        const concentration = Math.exp(-Math.pow((index - 32) / 14, 2)) * 77;
+        const requestVolume = Math.round(concentration + random(5, 24));
+        const opacity = 0.12 + requestVolume / 108;
+
+        const cell = document.createElement("div");
+        cell.className = "heat-cell";
+        cell.style.background = `rgba(104, 167, 255, ${opacity})`;
+        cell.title = `${index * 170}–${(index + 1) * 170} prompt tokens · Relative requests: ${requestVolume}`;
+        heatmap.appendChild(cell);
+      }
+    }
+
+    function renderVramTable(data) {
+      const table = document.getElementById("vramTable");
+      table.innerHTML = "";
+
+      data.vramUsage.forEach((percent, index) => {
+        const usedGB = (48 * percent / 100).toFixed(1);
+        const state = percent > 95
+          ? { cls: "chip-bad", text: "PREEMPTION RISK", color: "linear-gradient(90deg,#ff9d45,#ff637d)" }
+          : percent > 80
+          ? { cls: "chip-warn", text: "WATCH", color: "linear-gradient(90deg,#f7c65e,#ff9d45)" }
+          : { cls: "chip-good", text: "HEALTHY", color: "linear-gradient(90deg,#68a7ff,#42ddd1)" };
+
+        table.innerHTML += `
+          <tr>
+            <td><strong>H200 GPU ${index}</strong></td>
+            <td>vllm-prod-0${index + 1}</td>
+            <td>${usedGB} GB / 48 GB (${percent}%)</td>
+            <td>
+              <div class="table-bar">
+                <span style="width:${percent}%; background:${state.color}"></span>
+              </div>
+            </td>
+            <td><span class="status-chip ${state.cls}">${state.text}</span></td>
+          </tr>
+        `;
+      });
+    }
+
+    function buildCharts(data) {
+      destroyCharts();
+
+      const labels = makeLabels();
+
+      chartInstances.latency = new Chart(document.getElementById("latencyChart"), {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "P50 latency",
+              data: data.p50Series,
+              borderColor: COLORS.blue,
+              backgroundColor: "rgba(104, 167, 255, .13)",
+              fill: true,
+              borderWidth: 2,
+              tension: 0.4,
+              pointRadius: 0
+            },
+            {
+              label: "P99 latency",
+              data: data.p99Series,
+              borderColor: COLORS.red,
+              backgroundColor: "rgba(255, 99, 125, .08)",
+              fill: true,
+              borderWidth: 2.4,
+              tension: 0.4,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: lineOptions(" ms")
+      });
+
+      chartInstances.stage = new Chart(document.getElementById("stageChart"), {
+        type: "doughnut",
+        data: {
+          labels: ["Prefill / Input Processing", "Decode / Output Generation"],
+          datasets: [{
+            data: [data.prefill, 100 - data.prefill],
+            backgroundColor: [COLORS.purple, COLORS.cyan],
+            borderColor: "rgba(18, 32, 55, .95)",
+            borderWidth: 5,
+            hoverOffset: 9
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "65%",
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: { usePointStyle: true, pointStyle: "circle", padding: 16 }
+            },
+            tooltip: {
+              backgroundColor: "rgba(9, 18, 37, .94)",
+              callbacks: { label: ctx => `${ctx.label}: ${ctx.raw}%` }
+            }
+          }
+        }
+      });
+
+      chartInstances.ttftTpot = new Chart(document.getElementById("ttftTpotChart"), {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "TTFT (seconds)",
+              data: data.ttftSeries,
+              borderColor: COLORS.purple,
+              tension: 0.4,
+              pointRadius: 0,
+              borderWidth: 2.4
+            },
+            {
+              label: "TPOT (seconds/token)",
+              data: data.tpotSeries,
+              borderColor: COLORS.cyan,
+              tension: 0.4,
+              pointRadius: 0,
+              borderWidth: 2.4
+            }
+          ]
+        },
+        options: lineOptions(" sec")
+      });
+
+      chartInstances.token = new Chart(document.getElementById("tokenChart"), {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Input / Prompt tokens per sec",
+              data: data.inputTokens,
+              borderColor: COLORS.blue,
+              backgroundColor: "rgba(104, 167, 255, .16)",
+              fill: true,
+              tension: 0.38,
+              borderWidth: 2.2,
+              pointRadius: 0
+            },
+            {
+              label: "Output / Generation tokens per sec",
+              data: data.outputTokens,
+              borderColor: COLORS.purple,
+              backgroundColor: "rgba(175, 130, 255, .14)",
+              fill: true,
+              tension: 0.38,
+              borderWidth: 2.2,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: lineOptions(" tokens/s")
+      });
+
+      chartInstances.queue = new Chart(document.getElementById("queueChart"), {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: "Queue wait P95",
+            data: data.queueSeries,
+            backgroundColor: data.queueSeries.map(value =>
+              value > 250 ? "rgba(247, 198, 94, .88)" : "rgba(104, 167, 255, .78)"
+            ),
+            borderRadius: 5
+          }]
+        },
+        options: lineOptions(" ms")
+      });
+
+      chartInstances.scheduler = new Chart(document.getElementById("schedulerChart"), {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Running",
+              data: data.runningSeries,
+              borderColor: COLORS.green,
+              backgroundColor: "rgba(65, 219, 138, .17)",
+              fill: true,
+              tension: 0.4,
+              pointRadius: 0
+            },
+            {
+              label: "Waiting",
+              data: data.waitingSeries,
+              borderColor: COLORS.yellow,
+              backgroundColor: "rgba(247, 198, 94, .12)",
+              fill: true,
+              tension: 0.4,
+              pointRadius: 0
+            },
+            {
+              label: "Swapped",
+              data: data.swappedSeries,
+              borderColor: COLORS.red,
+              tension: 0.4,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: lineOptions(" requests")
+      });
+
+      chartInstances.cachePressure = new Chart(document.getElementById("cachePressureChart"), {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "GPU KV Cache usage",
+              data: data.kvSeries,
+              borderColor: COLORS.orange,
+              backgroundColor: "rgba(255, 157, 69, .12)",
+              fill: true,
+              tension: 0.36,
+              pointRadius: 0,
+              yAxisID: "y"
+            },
+            {
+              label: "Process RSS memory",
+              data: data.rssSeries,
+              borderColor: COLORS.cyan,
+              tension: 0.36,
+              pointRadius: 0,
+              borderWidth: 2.3,
+              yAxisID: "y1"
+            }
+          ]
+        },
+        options: {
+          ...lineOptions(),
+          scales: {
+            x: { grid: { display: false }, ticks: { maxTicksLimit: 7 } },
+            y: {
+              min: 40,
+              max: 100,
+              grid: { color: "rgba(183, 207, 255, .10)" },
+              title: { display: true, text: "KV cache %" }
+            },
+            y1: {
+              position: "right",
+              min: 6,
+              max: 14,
+              grid: { drawOnChartArea: false },
+              title: { display: true, text: "RSS GB" }
+            }
+          }
+        }
+      });
+
+      chartInstances.gcMemory = new Chart(document.getElementById("gcMemoryChart"), {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Python GC occurrences",
+              data: data.gcSeries,
+              borderColor: COLORS.yellow,
+              tension: 0.36,
+              pointRadius: 0,
+              yAxisID: "y"
+            },
+            {
+              label: "Process RSS memory",
+              data: data.rssSeries,
+              borderColor: COLORS.red,
+              tension: 0.36,
+              pointRadius: 0,
+              borderWidth: 2.4,
+              yAxisID: "y1"
+            }
+          ]
+        },
+        options: {
+          ...lineOptions(),
+          scales: {
+            x: { grid: { display: false }, ticks: { maxTicksLimit: 7 } },
+            y: {
+              beginAtZero: true,
+              grid: { color: "rgba(183, 207, 255, .10)" },
+              title: { display: true, text: "GC count" }
+            },
+            y1: {
+              position: "right",
+              min: 6,
+              max: 14,
+              grid: { drawOnChartArea: false },
+              title: { display: true, text: "RSS GB" }
+            }
+          }
+        }
+      });
+
+      chartInstances.finish = new Chart(document.getElementById("finishChart"), {
+        type: "doughnut",
+        data: {
+          labels: ["stop · normal completion", "length · max token limit", "abort · terminated"],
+          datasets: [{
+            data: [data.finishStop, data.finishLength, data.finishAbort],
+            backgroundColor: [COLORS.green, COLORS.yellow, COLORS.red],
+            borderColor: "rgba(18, 32, 55, .95)",
+            borderWidth: 5,
+            hoverOffset: 9
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "62%",
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: { usePointStyle: true, pointStyle: "circle", padding: 16 }
+            },
+            tooltip: {
+              backgroundColor: "rgba(9, 18, 37, .94)",
+              callbacks: { label: ctx => `${ctx.label}: ${ctx.raw}%` }
+            }
+          }
+        }
+      });
+
+      chartInstances.successThroughput = new Chart(document.getElementById("successThroughputChart"), {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Total request throughput",
+              data: data.requestSeries,
+              borderColor: COLORS.blue,
+              backgroundColor: "rgba(104, 167, 255, .14)",
+              fill: true,
+              tension: 0.38,
+              borderWidth: 2.3,
+              pointRadius: 0
+            },
+            {
+              label: "Successful stop requests",
+              data: data.successfulSeries,
+              borderColor: COLORS.green,
+              tension: 0.38,
+              borderWidth: 2.3,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: lineOptions(" req/s")
+      });
+
+      chartInstances.instance = new Chart(document.getElementById("instanceChart"), {
+        type: "bar",
+        data: {
+          labels: ["vllm-prod-01", "vllm-prod-02", "vllm-prod-03", "vllm-prod-04"],
+          datasets: [{
+            label: "Active inference requests",
+            data: data.instanceLoad,
+            backgroundColor: [COLORS.blue, COLORS.purple, COLORS.cyan, COLORS.green],
+            borderRadius: 6
+          }]
+        },
+        options: {
+          ...lineOptions(" requests"),
+          indexAxis: "y"
+        }
+      });
+
+      chartInstances.gpuUtil = new Chart(document.getElementById("gpuUtilChart"), {
+        type: "bar",
+        data: {
+          labels: ["H200 GPU 0", "H200 GPU 1", "H200 GPU 2", "H200 GPU 3"],
+          datasets: [{
+            label: "DCGM_FI_DEV_GPU_UTIL",
+            data: data.gpuUtil,
+            backgroundColor: data.gpuUtil.map(v => v > 90 ? COLORS.yellow : COLORS.cyan),
+            borderRadius: 6
+          }]
+        },
+        options: {
+          ...lineOptions(" %"),
+          scales: {
+            x: { grid: { display: false } },
+            y: {
+              min: 0,
+              max: 100,
+              grid: { color: "rgba(183, 207, 255, .10)" }
+            }
+          }
+        }
+      });
+    }
+
+    function refreshDashboard() {
+      const data = generateData();
+
+      setText("successRate", data.successRate.toFixed(2));
+      setText("activeRequests", data.active);
+      setText("efficiency", data.efficiency);
+      setText("ttftP99", data.ttftP99.toFixed(2));
+      setText("preemptionRate", data.preemptionRate.toFixed(2));
+
+      setText("p50Latency", `${data.p50.toLocaleString()} ms`);
+      setText("p95Latency", `${data.p95.toLocaleString()} ms`);
+      setText("p99Latency", `${data.p99.toLocaleString()} ms`);
+
+      setText("ioRatio", data.ioRatio.toFixed(2));
+      setText("prefixSavings", data.prefixSavings);
+
+      setText("kvUsage", data.kvUsage);
+      setText("prefixHit", data.prefixHit);
+      setText("runningRequests", data.running);
+      setText("waitingRequests", data.waiting);
+
+      setText("schedulerRunning", data.running);
+      setText("schedulerWaiting", data.waiting);
+      setText("schedulerSwapped", data.swapped);
+
+      setProgress(
+        "efficiencyProgress",
+        data.efficiency,
+        data.efficiency < 70 ? "fill-bad" : data.efficiency < 85 ? "fill-warn" : ""
+      );
+      setProgress("preemptionProgress", data.preemptionRate * 100, "fill-bad");
+      setProgress("p50Progress", data.p50 / 20, "");
+      setProgress("p95Progress", data.p95 / 20, "fill-warn");
+      setProgress("p99Progress", data.p99 / 20, "fill-bad");
+      setProgress("ioProgress", data.ioRatio * 33, "");
+      setProgress("savingsProgress", data.prefixSavings, "");
+      setProgress(
+        "kvProgress",
+        data.kvUsage,
+        data.kvUsage > 95 ? "fill-bad" : data.kvUsage > 80 ? "fill-warn" : ""
+      );
+      setProgress("prefixHitProgress", data.prefixHit, "");
+
+      setChip(
+        "successChip",
+        data.successRate >= 99.5 ? "chip-good" : data.successRate < 98 ? "chip-bad" : "chip-warn",
+        data.successRate >= 99.5 ? "NORMAL" : data.successRate < 98 ? "CRITICAL" : "WARNING"
+      );
+
+      setChip(
+        "efficiencyChip",
+        data.efficiency >= 85 ? "chip-good" : data.efficiency < 70 ? "chip-bad" : "chip-warn",
+        data.efficiency >= 85 ? "NORMAL" : data.efficiency < 70 ? "OVERLOAD" : "WATCH"
+      );
+
+      setChip(
+        "ttftChip",
+        data.ttftP99 < 1 ? "chip-good" : "chip-warn",
+        data.ttftP99 < 1 ? "HEALTHY" : "WATCH"
+      );
+
+      setChip(
+        "preemptionChip",
+        data.preemptionRate > 0 ? "chip-bad" : "chip-good",
+        data.preemptionRate > 0 ? "CRITICAL" : "CLEAR"
+      );
+
+      setChip(
+        "kvChip",
+        data.kvUsage > 95 ? "chip-bad" : data.kvUsage > 80 ? "chip-warn" : "chip-good",
+        data.kvUsage > 95 ? "CRITICAL" : data.kvUsage > 80 ? "WARNING" : "HEALTHY"
+      );
+
+      setText("updatedAt", new Date().toLocaleTimeString());
+
+      renderHeatmap();
+      renderVramTable(data);
+      buildCharts(data);
+    }
+
+    refreshDashboard();
+    setInterval(refreshDashboard, 8000);
+  </script>
+</body>
+</html>

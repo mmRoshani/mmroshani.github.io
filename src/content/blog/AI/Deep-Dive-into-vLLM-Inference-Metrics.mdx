@@ -1,0 +1,343 @@
+---
+heroImage: /src/assets/images/banners/ai/A_Deep_Dive_into_vLLM_Inference_Metrics.png
+category: AI Engineering
+description: >-
+  A Deep Dive into vLLM Inference Metrics for LLM Observability.
+pubDate: 2026-08-02T01:30:00.000Z
+draft: false
+tags:
+  - LLM
+  - Observability
+title: 'A Deep Dive into vLLM Inference Metrics'
+---
+
+import 'katex/dist/katex.min.css'
+
+## Introduction
+
+The transition from serving traditional stateless microservices to deploying Large Language Models (LLMs) requires a fundamental paradigm shift in observability.
+In conventional infrastructure, CPU utilization and standard request latency are sufficient indicators of system health.
+However, LLM inference is governed by the complex, nonlinear interactions of attention mechanisms, continuous batching schedulers, and the physical constraints of High Bandwidth Memory (HBM).
+Modern AI engineering has evolved past measuring raw token throughput, shifting focus toward optimizing **"goodput"** — the volume of requests successfully completed within strict Service Level Objectives (SLOs).
+
+This post examines the mathematical foundations, Prometheus implementation details, and strategic applications of the core vLLM inference metrics required for robust model evaluation and production monitoring.
+By systematically dissecting the metrics critical for Grafana dashboards — ranging from Summarized statistics to internal engine cache dynamics.
+Architects can bridge the gap between abstract model capabilities and the physical realities of GPU infrastructure.
+
+## Before Read
+
+- For cooperative learning one could see the live dashboard located at [LLM Inference Observatory](https://mmroshani.ir/sandbox/vllm-metrics-dashboard.html)
+- All the PromQL could be use to fetch metrics form internal vLLM prometheus.
+
+## Summarized Statistics and System Health
+
+The foundational layer of LLM observability involves quantifying the overarching reliability and immediate health of the inference service.
+Traditional web servers fail gracefully; LLM inference engines often fail silently through degraded generation or hidden preemptions.
+
+### Success Rate and Finish Reason Distribution
+
+The **Success Rate** is the paramount indicator of deployment health,
+mathematically defined as the ratio of successful requests to total processed requests over a given time window.
+In a vLLM deployment, this is not merely a measure of HTTP `200 OK` responses,
+but rather an analysis of the semantic termination of the generation loop.
+A healthy production environment typically dictates a success rate of **99.5% or higher**, with any drop below **98%** representing a critical failure state.
+
+The underlying metric driving this calculation is `vllm:request_success_total`, a Prometheus counter that increments upon request completion.
+Crucially, this metric is partitioned by a `finished_reason` label, creating a **Finish Reason Distribution**.
+Evaluating models requires understanding this distribution:
+
+- **Stop:** The model generated a natural End-Of-Sequence (EOS) token or encountered a predefined stop string. Only these are counted as genuine successes.
+- **Length:** The generation was truncated because it reached the configured maximum context length or generation limit.
+- **Abort:** The request was terminated abruptly due to client disconnection or internal engine errors.
+
+For model evaluation, a persistently high rate of `length` terminations indicates that the selected model lacks the concise reasoning capabilities required for the workload,
+or that the infrastructure is artificially constrained by a `max_model_len` parameter that is too small for the user's prompt engineering.
+The mathematical formulation for the success rate over a 5-minute window in PromQL is expressed as the rate of stopped requests divided by the rate of all requests:
+
+$$
+\text{Success Rate} = \frac{\text{rate}(\text{vllm:request\_success\_total}\{\text{finished\_reason}="\text{stop}"\}[5m])}{\sum \text{rate}(\text{vllm:request\_success\_total}[5m])}
+$$
+
+### Throughput vs. Success Convergence
+
+Tracking the trend of total request throughput against successful requests provides a macro-level view of system stability.
+These two metrics must consistently converge under normal conditions.
+A diverging gap between total throughput and successful completions signifies that the system is consuming highly expensive GPU cycles on requests that ultimately fail,
+usually via client timeouts (aborts) or context window breaches (length).
+When evaluating candidate models for deployment, a model that consistently exhibits a high divergence gap under load test conditions is likely suffering from internal attention degradation,
+forcing the engine to generate rambling,
+non-terminating text that inevitably hits length limits.
+
+### Python Garbage Collection and Process Memory
+
+While vLLM operates heavily in custom CUDA kernels and C++ backend code, the orchestration layer remains in Python.
+The **Python GC & Memory** metric tracks the number of Python Garbage Collection (GC) occurrences alongside the process Resident Set Size (RSS).
+
+LLM serving requires holding massive, dynamic state in memory.
+Frequent GC pauses induce severe jitter in tail latency, causing spontaneous spikes in time-between-tokens.
+Continuously increasing RSS indicates a memory leak within the binding layer, which will eventually trigger a system-level Out-Of-Memory (OOM) killer.
+Monitoring these system health metrics is essential because an inference pod consumes identical CPU and memory regardless of whether it is serving 0 or 50 requests;
+the true bottleneck lies in the unmanaged memory pools.
+
+| Metric Name    | Prometheus Metric / PromQL Example                                                                              | Mathematical Concept / Usage                                                                 |
+| -------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Success Rate   | `sum(rate(vllm:request_success_total{finished_reason="stop"}[5m])) / sum(rate(vllm:request_success_total[5m]))` | Ratio of naturally terminating requests to total requests. Core reliability indicator.       |
+| Finish Reason  | `vllm:request_success_total` labeled by `finished_reason`                                                       | Distribution of termination states. High `length` rates indicate misaligned context windows. |
+| Throughput Gap | `rate(total_requests)` vs `rate(successful_requests)`                                                           | Identifies wasted GPU compute on aborted/truncated generations.                              |
+| Python GC/Mem  | `process_resident_memory_bytes`                                                                                 | Leading indicator of memory leaks and latency jitter caused by garbage collection pauses.    |
+
+## Quantifying Latency and User Experience
+
+Latency in LLM inference is a composite function, heavily dependent on the mathematical realities of transformer architectures.
+Standard averages completely fail to represent the user experience due to the long-tail nature of generative text;
+thus, percentile distributions (P50, P90, P99) are strictly required for accurate observability.
+
+### End-to-End Request Latency
+
+**E2E Request Latency** tracks the total wall-clock time from the moment the inference server receives a request to the moment the final token is generated and the connection is closed.
+In Prometheus, this is exposed as a histogram (`vllm:e2e_request_latency_seconds`).
+
+The calculation of quantiles (e.g., P50 for the median user, P99 for the 99th percentile worst-case scenario) relies on the `histogram_quantile()` function.
+Prometheus implements this by observing bucketed counts and applying linear interpolation within the target bucket.
+This interpolation assumes a uniform distribution of requests within that specific bucket.
+If the P99 latency begins to spike erratically, it signals that the continuous batching scheduler is failing to seamlessly interleave new requests, demanding immediate bottleneck analysis.
+
+### Time to First Token (TTFT) P99
+
+**Time to First Token (TTFT)** is the most critical metric for interactive applications, representing the perceived responsiveness of the AI system.
+Human-computer interaction research demonstrates that TTFT must ideally remain under **1 second**;
+values exceeding this threshold induce noticeable user frustration.
+
+TTFT is mathematically dominated by the **prefill** phase of the model.
+During prefill, the model must read the entire input prompt, compute the dense attention matrix, and construct the initial Key-Value (KV) cache.
+The computational complexity for this phase scales quadratically with the sequence length, $O(n^2 \cdot d)$,
+making it heavily **compute-bound** (limited by raw TFLOPS).
+For example, a 512-token prefill on a 70-billion parameter model requires approximately 71.7 TFLOPs of compute.
+
+The PromQL query for TTFT P99 leverages the bucketed histogram:
+
+```promql
+histogram_quantile(0.99, sum(rate(vllm:time_to_first_token_seconds_bucket[5m])) by (le))
+```
+
+When evaluating models for interactive use cases, TTFT P99 is the primary limiting factor.
+A model with an excessively large hidden dimension will produce unacceptably high TTFT on older generation hardware (like L40S) regardless of the batch size,
+forcing architects to choose smaller models or upgrade to compute-heavy GPUs like the H100.
+
+### Time Per Output Token (TPOT) and Inference Stage Breakdown
+
+Once the initial TTFT penalty is paid, the model enters the **decode** phase.
+**Time Per Output Token (TPOT)**, also known as Inter-Token Latency (ITL), measures the average speed of subsequent token generation.
+
+Unlike the compute-bound prefill phase, the decode phase generates one token at a time.
+To do this (for not MoE model), the GPU must load the entire model weight matrix and the historical KV cache from High Bandwidth Memory (HBM) into the compute cores for every single token.
+Consequently, the decode phase is **memory-bandwidth-bound**, characterized by a very low arithmetic intensity of approximately 1 FLOP/byte.
+
+The total End-to-End latency can be mathematically modeled as:
+
+$$
+\text{Latency}_{\text{E2E}} = \text{TTFT} + (N_{\text{output}} \times \text{TPOT})
+$$
+
+Where $N_{\text{output}}$ is the number of generated tokens.
+
+The **Inference Stage Breakdown** visualizes the proportion of time spent in Prefill (input processing) versus Decode (output generation).
+
+- A high prefill latency isolates the bottleneck to long input prompts or insufficient TFLOPS.
+- Conversely, high decode latency isolates the bottleneck to long output generations or saturated memory bandwidth.
+
+Comparing TTFT vs. TPOT is the definitive method for diagnosing LLM performance degradation under load.
+
+| Latency Metric    | Prometheus Source Metric             | Bottleneck Indicator                                          |
+| ----------------- | ------------------------------------ | ------------------------------------------------------------- |
+| E2E Latency (P99) | `vllm:e2e_request_latency_seconds`   | General system overload; inadequate scaling.                  |
+| TTFT (P99)        | `vllm:time_to_first_token_seconds`   | Compute (TFLOPS) saturation; excessive prompt lengths.        |
+| TPOT / ITL        | `vllm:time_per_output_token_seconds` | Memory bandwidth saturation; excessive concurrent batch size. |
+
+## Token Throughput and Workload Characterization
+
+Raw latency must be contextualized by volumetric throughput.
+The rate at which an inference server processes data dictates the ultimate cost-efficiency of the hardware.
+
+### Token Throughput and the I/O Ratio
+
+**Token Throughput** represents the absolute number of tokens processed per second, divided into input (Prompt) tokens and output (Generation) tokens.
+Higher overall throughput indicates superior system efficiency and better amortization of fixed GPU costs.
+
+The mathematical relationship between these two volumes is the **Token I/O Ratio**:
+
+$$
+\text{Token I/O Ratio} = \frac{\text{Sum of Input Tokens}}{\text{Sum of Output Tokens}}
+$$
+
+This ratio is the most powerful tool for workload characterization.
+
+- **High Ratio (e.g., 20:1):** Indicates long inputs and extremely short outputs. This is the signature of Retrieval-Augmented Generation (RAG), summarization, and classification tasks. These workloads exert intense pressure on the prefill phase. Model selection for high I/O ratio workloads must prioritize architectures with highly optimized attention kernels (e.g., FlashAttention-2) or linear attention variants to survive the quadratic scaling of input processing.
+- **Low Ratio (e.g., 0.1:1):** Indicates short inputs and long outputs. This is the signature of creative generation, coding assistants, and open-ended chat. These workloads exert intense pressure on memory bandwidth during prolonged decode phases. Evaluating models for low I/O workloads requires prioritizing smaller parameter counts or aggressive quantization (e.g., FP8 or INT4) to maximize the number of concurrent sequences that fit into memory.
+
+### Request Length Heatmap (Prompt)
+
+The **Request Length Heatmap** visualizes the distribution of input prompt tokens across the incoming request stream. In a production environment, darker heat concentrations represent the most common prompt lengths.
+
+If the heatmap reveals that 95% of requests fall within a narrow band (e.g., 2,000 to 2,500 tokens), systems architects can optimize the engine specifically for that length. Memory pre-allocation parameters, such as `max_num_batched_tokens`, can be mathematically tuned to fit exact multiples of this distribution, minimizing idle padding and maximizing continuous batching density.
+
+## Engine Internals and Cache Dynamics
+
+The primary innovation that enables high-throughput LLM serving is the mathematical reconceptualization of memory management via **PagedAttention**. Traditional LLM serving suffered from catastrophic memory fragmentation, where the unpredictable length of generated text required reserving maximum possible contiguous memory for every request, wasting massive amounts of VRAM.
+
+### GPU KV Cache Usage
+
+PagedAttention circumvents this by dividing the KV cache into fixed-size blocks (pages) that do not need to be contiguous in physical memory. This allows the engine to allocate memory dynamically as the sequence grows, virtually eliminating internal and external fragmentation.
+
+The `vllm:kv_cache_usage_perc` metric (previously known in older vLLM versions as `vllm:gpu_cache_usage_perc`) quantifies the saturation of this page pool. It represents the percentage of the memory area allocated for intermediate computation results that is actively in use.
+
+Monitoring this metric is absolutely critical for capacity planning. A usage rate crossing **80%** serves as a warning threshold, indicating that the continuous batching scheduler is operating at peak efficiency but nearing its limits. If the usage rate exceeds **95%**, the system is at severe risk of preemption. The physical math governing this is immutable: an NVIDIA L40S possesses 48GB of VRAM. If the model weights consume 30GB, only 18GB is available for the KV cache. The usage percentage metric tracks the exhaustion of this 18GB boundary.
+
+### Prefix Cache Hit Rate and Savings
+
+In many production environments, especially enterprise RAG or agentic systems, requests share identical system prompts or massive context documents. vLLM implements **Automatic Prefix Caching (APC)** to mathematically identify shared token sequences, allowing new requests to instantly map to existing KV cache blocks without recomputing the prefill phase.
+
+The **Prefix Cache Hit Rate** measures the efficiency of this reuse. A hit rate exceeding **70%** is considered highly efficient and is a primary operational goal for RAG environments. In Prometheus, this hit rate is derived from two counters — `vllm:gpu_prefix_cache_hits` and `vllm:gpu_prefix_cache_queries`. The true real-time hit rate is calculated using PromQL rate functions over a sliding window:
+
+$$
+\text{Hit Rate} = \frac{\text{rate}(\text{vllm:gpu\_prefix\_cache\_hits}[5m])}{\text{rate}(\text{vllm:gpu\_prefix\_cache\_queries}[5m])}
+$$
+
+The downstream business value of this metric is expressed through **Prefix Cache Savings**, which calculates the percentage of raw computation successfully bypassed. The mathematical formula is:
+
+$$
+\text{Prefix Cache Savings (\%)} = \left( 1 - \frac{\text{Actual Computations}}{\text{Total Input Tokens}} \right) \times 100
+$$
+
+A higher savings value indicates that the engine is skipping massive amounts of dense matrix multiplication, directly conserving GPU FLOPs and dramatically reducing the TTFT for end-users. When selecting models, it is crucial to recognize that variations in whitespace or tokenization schemes can break exact prefix matches. Ensuring deterministic tokenization of system prompts is required to maintain high cache savings.
+
+| Cache Metric          | Prometheus Source Metric                 | Usage & Implications                                                            |
+| --------------------- | ---------------------------------------- | ------------------------------------------------------------------------------- |
+| GPU KV Cache Usage    | `vllm:kv_cache_usage_perc`               | Physical memory saturation. Values >95% lead directly to request preemption.    |
+| Prefix Cache Hit Rate | `vllm:gpu_prefix_cache_hits` / `queries` | Efficiency of prompt reuse. Critical for RAG and system-prompt heavy workloads. |
+| Prefix Cache Savings  | Derived computationally                  | The exact percentage of GPU FLOPs saved by bypassing prefill operations.        |
+
+## Scheduler State and System Efficiency
+
+vLLM utilizes continuous batching (iteration-level scheduling) to dynamically inject new requests into active execution batches the moment a sequence completes, optimizing GPU saturation. The health of this scheduler determines the ultimate throughput of the infrastructure.
+
+### Scheduler State and Preemption Rate
+
+At any microsecond, every request tracked by the vLLM engine occupies one of three distinct scheduler states:
+
+- **Running:** The request is actively loaded on the GPU and generating tokens.
+- **Waiting:** The request is queued, pending the availability of sufficient KV cache blocks to begin prefill.
+- **Swapped:** The request was previously running but was preempted and its KV cache swapped to CPU RAM due to VRAM exhaustion.
+
+A continuous increase in the number of Waiting requests (`vllm:num_requests_waiting`) is the definitive indicator of system overload.
+
+If the KV cache reaches absolute saturation while requests are still in the Running state, the engine is forced to execute a **Preemption**. The Preemption Rate (`vllm:num_preemptions_total`) is a critical, red-line metric. Running requests are abruptly halted because there is no physical memory left to store the next generated token's KV vector. A preemption rate exceeding zero requires immediate architectural intervention. Engineers must either provision higher-VRAM GPUs, distribute the load across more replicas, or manually reduce the `max_num_seqs` configuration to force a stricter upper bound on concurrent executions.
+
+### System Efficiency and Request Queue Time
+
+**System Efficiency** mathematically quantifies the scheduler's ability to maintain pace with incoming traffic. It is calculated as:
+
+$$
+\text{System Efficiency} = \frac{\text{Running Requests}}{\text{Running Requests} + \text{Waiting Requests}}
+$$
+
+A system efficiency of 100% (1.0) means that every request is processed instantaneously upon arrival. A value dropping below **70%** indicates that the infrastructure is overwhelmed, as the queue is accumulating faster than the GPU can drain it.
+
+This bottleneck manifests physically as **Request Queue Time** (`vllm:request_queue_time_seconds`), which tracks the exact duration requests spend trapped in the waiting state. Queue time directly inflates E2E latency without providing any productive computation.
+
+Because LLM workloads do not register traditional CPU load spikes, standard Kubernetes Horizontal Pod Autoscaler (HPA) triggers fail completely. Advanced scaling architectures must instead route the `vllm:num_requests_waiting` and `vllm:request_queue_time_seconds` metrics through a Prometheus adapter to drive the HPA. When the queue depth exceeds a predefined threshold (e.g., > 5 requests waiting), the HPA provisions new GPU instances to absorb the load.
+
+## Infrastructure, Load Balancing, and Advanced Topologies
+
+Translating software metrics into physical hardware realities requires correlating vLLM telemetry with system-level observations.
+
+### Load Balancing and Hardware Utilization
+
+The **Instance Request Distribution** metric monitors live traffic distribution across multiple inference instances behind a load balancer. Because LLM requests exhibit massive variance in execution time (a single 8,000-token generation can hold a connection open for minutes while a 50-token generation finishes instantly), standard round-robin load balancing often results in catastrophic imbalance. Tracking request distribution ensures the load balancer is properly routing traffic based on active connection depth rather than simple round-robin, preventing localized bottlenecks.
+
+Simultaneously, software metrics must be validated against DCGM (Data Center GPU Manager) hardware metrics.
+
+- **L40S GPU Utilization (DCGM):** Tracks raw compute saturation on the hardware. Unlike CPUs, running a GPU at 100% utilization is the desired state for maximum ROI, provided queue times remain low.
+- **L40S VRAM Allocation (DCGM):** Represents the physical memory actively consumed by the GPU (`DCGM_FI_DEV_FB_USED`). This confirms that the vLLM memory allocator successfully seized the intended memory fraction upon startup.
+
+### Resolving the Prefill-Decode Conflict
+
+The most profound insight provided by these observability metrics is the inherent mathematical conflict between prefill and decode operations. When a massive, compute-bound prefill request enters a running batch, it monopolizes the Tensor Cores. This completely stalls the execution of all other ongoing decode requests, causing erratic spikes in TPOT and a stuttering text stream for end-users.
+
+To resolve this, engineers evaluate two advanced architectural topologies: **Chunked Prefill** and **Disaggregated Serving**.
+
+#### Chunked Prefill
+
+Chunked prefill mitigates this interference within a single GPU. Instead of processing an enormous prompt in a single, blocking forward pass, the algorithm segments the prompt into smaller, fixed-size mathematical chunks (e.g., 512 tokens). These chunks are interleaved with the decode steps of other active requests.
+
+While chunking slightly increases the TTFT for the incoming request due to chunk-transition overhead, it dramatically stabilizes TPOT for all other requests. When observing metrics during evaluation, enabling chunked prefill will display a flatter, highly consistent Inter-Token Latency histogram, trading a minor P50 TTFT penalty for massive improvements in P99 streaming stability.
+
+#### Disaggregated Prefill and Decode (DPD)
+
+For maximum enterprise scale, the architecture shifts to **Disaggregated Prefill and Decode (DPD)**. This completely isolates the compute-bound and memory-bound phases onto distinct hardware pools. Requests route first to prefill-optimized GPUs (e.g., H100s for maximum TFLOPS). Once the prefill completes, the engine transfers the resulting KV cache over the network to decode-optimized GPUs (e.g., H200s for maximum HBM capacity).
+
+In vLLM, this requires monitoring NIXL KV Transfer metrics, such as `vllm:nixl_xfer_time_seconds_sum` and `vllm:nixl_bytes_transferred_sum`. The mathematical viability of DPD depends entirely on the network interconnect; the time taken to transfer the massive KV tensor across the network (via RDMA or NCCL P2P) must be smaller than the latency saved by unblocking the decode GPUs.
+
+### Speculative Decoding Mathematics
+
+To specifically accelerate the memory-bound decode phase, vLLM supports **Speculative Decoding**. This pattern utilizes a smaller, highly efficient "draft" model to predict a sequence of tokens, which a larger "target" model verifies in a single forward pass. Because verifying multiple tokens simultaneously costs roughly the same compute time as generating one token, it mathematically bypasses the memory-bandwidth limit.
+
+The success of this architecture relies entirely on the **Draft Acceptance Rate** (`vllm:spec_decode_draft_acceptance_rate`). If the draft model proposes $N$ tokens, the expected number of accepted tokens per step is defined by the geometric series of the acceptance probability $\alpha$:
+
+$$
+\text{Expected Accepted Tokens} = \frac{1 - \alpha^{N+1}}{1 - \alpha}
+$$
+
+If the acceptance rate falls below 50% ($\alpha < 0.5$), the overhead of generating rejected draft tokens exceeds the time saved by successful verifications, actively degrading system performance. When evaluating draft models, they must be tested at the exact temperature parameter used in production. Benchmarks run at greedy temperatures (T=0) will show artificially high acceptance rates (e.g., 0.81), whereas production creative traffic (T=1.0) may collapse the same model pairing to an acceptance rate of 0.38, turning the intended optimization into a severe bottleneck.
+
+## Prometheus Multiprocess Telemetry Architecture
+
+To expose these high-resolution metrics without degrading the core inference engine, vLLM utilizes a sophisticated telemetry architecture. The vLLM OpenAI-compatible server relies on Python multiprocessing to orchestrate concurrent workers. However, standard Prometheus client libraries fail in multiprocess Python environments due to global interpreter lock (GIL) and isolated memory space constraints.
+
+vLLM resolves this using the `prometheus_client.multiprocess` module. The environment variable `PROMETHEUS_MULTIPROC_DIR` defines a temporary filesystem directory. Each isolated worker process rapidly writes its real-time telemetry deltas to highly efficient memory-mapped files within this directory.
+
+When the central Prometheus server scrapes the `/metrics` endpoint, a `MultiProcessCollector` aggregates the data from these discrete files and serializes them into the OpenMetrics format. This ensures that the computationally expensive PromQL operations — such as bucket interpolation via `histogram_quantile` or complex windowed aggregations via `rate()` — are offloaded entirely to the external Prometheus server. The inference engine remains fully isolated from the observability overhead, guaranteeing that the act of measuring latency does not inherently inflate the latency.
+
+The rigorous monitoring of these 22 metrics provides a mathematically sound framework for LLM infrastructure. By correlating top-line success rates with internal queue depth, physical KV cache saturation, and hardware-level limits, systems architects can move beyond reactive server management to proactive, deterministic AI deployment optimization.
+
+## Works Cited
+
+1. [Prefill Decode: Architecting High-Goodput LLM Serving Systems](https://prefilldecode.com/)
+2. [Grafana Dashboard Metrics - vLLM Monitoring](https://drive.google.com/open?id=1Xx2tg1VjHwXhwhFokYhqC7WVL9Ys0DBAR8r2mar9jnE)
+3. [指标 - vLLM 中文站](https://vllm.hyper.ai/docs/design-v1/metrics/)
+4. [Мониторинг Model RUN vLLM — документация ML Inference (Cloud.ru)](https://cloud.ru/docs/ml-inference/ug/topics/concepts__monitoring-vllm)
+5. [Speculative Decoding Production Guide: 2-5x Faster LLM Inference on GPU Cloud](https://www.spheron.network/blog/speculative-decoding-production-guide/)
+6. [Observability — Unified Cache Manager](https://ucm.readthedocs.io/en/latest/user-guide/metrics/metrics.html)
+7. [Production Metrics - vLLM v0.7.0 Documentation (BookStack)](https://www.bookstack.cn/read/vllm-0.7.0-en/30bdd4cabeff2cb6.md)
+8. [Metrics on LLMs](https://drive.google.com/open?id=1scU-P5yoDqTS6qdLw_uEsQb4VYXtE8pV9dwI3cGkXxM)
+9. [ImageHandlerTest.testGotoDegradeFailForAsync — CSDN文库](https://wenku.csdn.net/answer/2phgo5k6ei)
+10. [GPU Autoscaling on Kubernetes: From Prometheus Metrics to HPA with vLLM on GKE](https://medium.com/@akrem.issaoui1/gpu-autoscaling-on-kubernetes-from-prometheus-metrics-to-hpa-with-vllm-on-gke-48578e5753d1)
+11. [Observing vLLM with OpenTelemetry and Dash0](https://www.dash0.com/blog/observing-vllm-with-opentelemetry-and-dash0)
+12. [TTFT meaning: What Time to First Token tells you about your LLM app — Redis](https://redis.io/blog/ttft-meaning/)
+13. [vLLM OpenTelemetry: Monitor LLM Inference Metrics with Parseable](https://www.parseable.com/blog/vllm-inference-metrics-otel)
+14. [Production Metrics - vLLM](https://docs.vllm.ai/en/v0.5.4/serving/metrics.html)
+15. [Chapter 5. AI Inference Server metrics — Red Hat Documentation](https://docs.redhat.com/en/documentation/red_hat_ai_inference_server/3.1/html/vllm_server_arguments/vllm-metrics_server-arguments)
+16. [Home - RTrentin's world](https://rtrentinsworld.com/home/)
+17. [Histograms and summaries - Prometheus](https://prometheus.io/docs/practices/histograms/)
+18. [LLM Inference SLO Engineering: TTFT, ITL, and P99 Latency Budgets for Production AI (2026)](https://www.spheron.network/blog/llm-inference-slo-ttft-itl-latency-budget-guide-2026/)
+19. [LLM Latency Decomposition: Why TTFT and Throughput Are Different Problems](https://tianpan.co/blog/2026-03-10-llm-latency-decomposition-ttft-vs-throughput)
+20. [Prefill-Decode Disaggregation on GPU Cloud: Split LLM Inference for 2x Throughput (2026 Guide)](https://www.spheron.network/blog/prefill-decode-disaggregation-gpu-cloud/)
+21. [Chapter 36: Disaggregated prefill/decode: production reality with workload-dependent payoff](https://www.kunwar.page/chapter/036-disaggregated-prefill-decode-production-reality-with-workload-dependent-payoff)
+22. [vllm.v1.metrics.loggers](https://docs.vllm.ai/en/v0.10.1/api/vllm/v1/metrics/loggers.html)
+23. [Achieving Up to 67% Cost Savings with Prefill-Decode Disaggregation Using Ray + vLLM on AMD MI325X](https://www.anyscale.com/blog/ray-vllm-prefill-decode-disaggregation-amd-mi325x-67-percent-savings)
+24. [vLLM Docs - GitHub Gist](https://gist.github.com/rbiswasfc/678e4c78258480dcb6214efeedbe5af8)
+25. [[Feature][v1]: Add metrics support · Issue #10582 · vllm-project/vllm](https://github.com/vllm-project/vllm/issues/10582)
+26. [Configure auto scaling for standalone or distributed LLM inference services — 阿里云文档](https://help.aliyun.com/en/ack/cloud-native-ai-suite/user-guide/configuring-elastic-scaling-for-single-machine-multi-machine-inference)
+27. [Inside Real-Time LLM Inference: From Prefill to Decode, Explained](https://medium.com/@devsp0703/inside-real-time-llm-inference-from-prefill-to-decode-explained-72a1c9b1d85a)
+28. [vLLM, SGLang, or TensorRT-LLM? Picking an LLM Serving Stack — Jarvis Labs Blog](https://jarvislabs.ai/blog/vllm-sglang-trtllm-comparison)
+29. [llm-d-benchmark/docs/metrics_collection.md](https://github.com/llm-d/llm-d-benchmark/blob/main/docs/metrics_collection.md)
+30. [fix(metrics): Prometheus counter crash on negative prompt tokens with external KV transfer · Issue #38839](https://github.com/vllm-project/vllm/issues/38839)
+31. [Disaggregation | NVIDIA Dynamo Documentation](https://docs.nvidia.com/dynamo/dev/backends/sg-lang/disaggregation)
+32. [Speculative Decoding on vLLM: A Configuration and Decision Framework — DigitalOcean](https://www.digitalocean.com/community/tutorials/speculative-decoding-vllm-configuration-guide)
+33. [Production Metrics - vLLM Documentation](https://docs.vllm.ai/en/v0.6.2/serving/metrics.html)
+34. [Prometheus | NVIDIA Dynamo Documentation](https://docs.nvidia.com/dynamo/dev/knowledge-base/modular-components/backends/v-llm/observability)
+35. [Metrics by vLLM API - LMCache](https://docs.lmcache.ai/production/observability/vllm_endpoint.html)
+
+---
+
+Let me know in the comments below what other metrics you prefer, or subscribe to the newsletter for more deep dives into production-grade AI engineering!
