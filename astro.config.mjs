@@ -32,9 +32,7 @@ export default defineConfig({
 			},
 			drafts: true
 		}),
-		sitemap({ 
-  			destinationDir: 'dist'
-		}),
+		sitemap(),
 		tailwind()
 	]
 })

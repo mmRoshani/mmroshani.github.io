@@ -1,12 +1,30 @@
 ---
 import AboutMe from '@/components/AboutMe'
+import JsonLd from '@/components/JsonLd'
 import BaseLayout from '@/layouts/BaseLayout'
+import { aboutContent, personProfile } from '@/data/about'
 import { siteConfig } from '@/site-config'
+
+const aboutDescription = `${personProfile.name} is an ${personProfile.jobTitle} specializing in ${aboutContent.focusTopics.join(', ')}. Education, experience, and writing on production AI systems.`
+
+const profilePageSchema = {
+	'@context': 'https://schema.org',
+	'@type': 'ProfilePage',
+	'@id': `${personProfile.url}#profile`,
+	url: personProfile.url,
+	name: `About ${personProfile.name}`,
+	description: aboutDescription,
+	inLanguage: siteConfig.lang,
+	mainEntity: {
+		'@id': `${personProfile.url}#person`
+	},
+	about: {
+		'@id': `${personProfile.url}#person`
+	}
+}
 ---
 
-<BaseLayout
-	title='About Me'
-	description={`Learn more about ${siteConfig.author}, including background in AI engineering, data platforms, and distributed systems.`}
->
+<BaseLayout title={`About ${personProfile.name}`} description={aboutDescription}>
+	<JsonLd data={profilePageSchema} />
 	<AboutMe />
 </BaseLayout>

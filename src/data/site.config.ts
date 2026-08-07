@@ -11,9 +11,10 @@ interface SiteConfig {
 
 export const siteConfig: SiteConfig = {
 	site: 'https://mmroshani.ir/', // Write here your website url
-	author: 'MohammadMojtaba Roshani (mmRoshani)', // originally `DanielCG`
+	author: 'Mohammad Mojtaba Roshani (mmRoshani)',
 	title: 'mmRoshani', // Site title.
-	description: "MohammdMojtaba Roshani (mmRoshani)'s Web Page", // Description to display in the meta tags
+	description:
+		'Articles and notes by Mohammad Mojtaba Roshani (mmRoshani) on AI engineering, agentic systems, MLOps, federated learning, and production data platforms.',
 	lang: 'en-GB',
 	ogLocale: 'en_GB',
 	shareMessage: `————————————————
