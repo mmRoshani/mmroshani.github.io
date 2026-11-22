@@ -1,0 +1,235 @@
+---
+heroImage: /src/assets/images/banners/ai/kv_cache_memory_math.png
+category: AI Engineering
+description: >-
+  How to work out how much context and how many concurrent requests fit on a
+  GPU, from the per-token KV cache formula to GQA, MLA, FP8 KV and paging.
+pubDate: 2026-11-22T00:00:00.000Z
+draft: false
+tags:
+  - LLM
+  - Inference
+  - vLLM
+  - Capacity Planning
+title: 'KV Cache Memory Math: Sizing Context and Concurrency for LLM Serving'
+---
+
+import 'katex/dist/katex.min.css'
+
+## Introduction
+
+When an LLM deployment falls over in production, the cause is rarely the model weights.
+The weights are a fixed cost you pay once at startup.
+The cost that moves with traffic is the **KV cache**: the keys and values the model stores for every token of every active request so it doesn't have to recompute them at each decoding step.
+
+The KV cache decides how long a context you can serve, how many requests you can batch together, and when the scheduler starts preempting work.
+In the [vLLM inference metrics post](/post/ai/deep-dive-into-vllm-inference-metrics) we watched `vllm:kv_cache_usage_perc` climb toward 95% and trigger preemptions.
+This post works one step earlier: how to calculate, before you deploy, how much KV cache a model needs and how much a GPU can hold.
+
+## What the KV Cache Stores
+
+A decoder-only transformer generates one token at a time.
+At each step, the attention layers compare the new token's query against the keys of every previous token, then take a weighted sum of their values.
+Those keys and values don't change once computed, so inference engines keep them in GPU memory rather than recomputing the whole prefix on every step.
+
+This is what splits inference into two phases:
+
+- **Prefill** processes the full prompt in parallel and writes its keys and values into the cache. It is compute-bound.
+- **Decode** generates tokens one by one, reading the entire cache at every step. It is memory-bandwidth-bound.
+
+Every token in a live sequence occupies cache space in every layer until the request finishes.
+
+## The Per-Token Formula
+
+For a standard attention layer, each token stores one key vector and one value vector per KV head.
+Summed across all layers, the memory per token is:
+
+$$
+\text{KV bytes per token} = 2 \times L \times H_{kv} \times d_{head} \times b
+$$
+
+where:
+
+- $2$ accounts for keys **and** values,
+- $L$ is the number of transformer layers (`num_hidden_layers`),
+- $H_{kv}$ is the number of key/value heads (`num_key_value_heads`),
+- $d_{head}$ is the head dimension (usually `hidden_size / num_attention_heads`),
+- $b$ is bytes per element: 2 for FP16/BF16, 1 for FP8.
+
+Every value comes from the model's `config.json`.
+For a full sequence, multiply by the number of tokens $T$:
+
+$$
+\text{KV bytes per sequence} = T \times 2 \times L \times H_{kv} \times d_{head} \times b
+$$
+
+### Worked Examples
+
+All figures below assume a BF16 cache ($b = 2$):
+
+| Model         | $L$ | $H_{kv}$ | $d_{head}$ | Per token | 8k tokens | 32k tokens |
+| ------------- | --- | -------- | ---------- | --------- | --------- | ---------- |
+| Llama 2 7B    | 32  | 32       | 128        | 512 KiB   | 4 GiB     | 16 GiB     |
+| Llama 3.1 8B  | 32  | 8        | 128        | 128 KiB   | 1 GiB     | 4 GiB      |
+| Qwen3 32B     | 64  | 8        | 128        | 256 KiB   | 2 GiB     | 8 GiB      |
+| Llama 3.1 70B | 80  | 8        | 128        | 320 KiB   | 2.5 GiB   | 10 GiB     |
+
+The last row is worth a second look.
+A single Llama 3.1 70B request at its full 128k context needs $131{,}072 \times 320\ \text{KiB} = 40\ \text{GiB}$ of KV cache.
+That is one user, on top of about 140 GB of BF16 weights.
+
+## Why Modern Models Are Cheaper: GQA and MLA
+
+Compare Llama 2 7B with Llama 3.1 8B in the table.
+The models are about the same size, yet the newer one uses a quarter of the cache per token.
+The only difference in the formula is $H_{kv}$.
+
+### Grouped-Query Attention (GQA)
+
+In classic multi-head attention (MHA), every query head has its own key and value head, so $H_{kv} = H_q$.
+**Grouped-Query Attention** lets several query heads share one KV head.
+Llama 3.1 8B has 32 query heads and 8 KV heads, so each group of 4 query heads reads the same keys and values.
+The cache shrinks by a factor of $H_q / H_{kv} = 4$, with very little loss in quality.
+
+Multi-Query Attention (MQA) is the extreme case with $H_{kv} = 1$. It saves the most memory but costs more quality, which is why most current open models settle on GQA with 8 KV heads.
+
+### Multi-head Latent Attention (MLA)
+
+DeepSeek-V2 and V3 go further.
+**Multi-head Latent Attention** compresses keys and values into a shared low-rank latent vector and caches that instead of the per-head tensors.
+In DeepSeek-V3 each layer caches a 512-dimensional latent plus a 64-dimensional rotary key, 576 values in total:
+
+$$
+61 \times 576 \times 2\ \text{bytes} \approx 68.6\ \text{KiB per token}
+$$
+
+If the same model cached full keys and values for its 128 heads (192-dimensional keys, 128-dimensional values), the cache would be about 4.8 MiB per token, roughly 71 times larger.
+MLA is a large part of why a 671B-parameter model can serve long contexts at all.
+
+## How Much KV Cache Fits on a GPU
+
+The budget left for the cache is whatever remains after the weights and the runtime's own overhead:
+
+$$
+M_{kv} = U \times M_{gpu} - M_{weights} - M_{overhead}
+$$
+
+- $U$ is the fraction of VRAM the engine may claim. In vLLM this is `--gpu-memory-utilization`, which defaults to `0.9`.
+- $M_{weights}$ is roughly parameter count times bytes per parameter (divided across GPUs under tensor parallelism).
+- $M_{overhead}$ covers activations, CUDA graphs and the CUDA context. It is usually 1–3 GiB per GPU and is easiest to read from the engine's startup logs.
+
+From the budget, the number of tokens the cache can hold is:
+
+$$
+T_{max} = \frac{M_{kv}}{2 \times L \times H_{kv} \times d_{head} \times b}
+$$
+
+and the number of **full-length** requests that can run at once is:
+
+$$
+N_{concurrent} = \left\lfloor \frac{T_{max}}{T_{prompt} + T_{output}} \right\rfloor
+$$
+
+### Example: Llama 3.1 8B on a 24 GB GPU
+
+Take a single 24 GiB card such as an RTX 4090:
+
+1. Usable memory: $0.9 \times 24 = 21.6\ \text{GiB}$.
+2. BF16 weights: $8.03 \times 10^9 \times 2\ \text{bytes} \approx 15.0\ \text{GiB}$.
+3. Assume about 1.5 GiB of overhead, which leaves $M_{kv} \approx 5.1\ \text{GiB}$.
+4. At 128 KiB per token: $T_{max} \approx 42{,}000$ tokens.
+
+With 8k-token requests that gives about **5 concurrent requests**.
+Here is what each lever does to that number:
+
+| Change                           | KV budget | Tokens in cache | 8k requests at once |
+| -------------------------------- | --------- | --------------- | ------------------- |
+| Baseline (BF16 weights and KV)   | ~5.1 GiB  | ~42k            | ~5                  |
+| FP8 KV cache                     | ~5.1 GiB  | ~84k            | ~10                 |
+| 4-bit weights (~5.7 GiB)         | ~14.4 GiB | ~118k           | ~14                 |
+| `--gpu-memory-utilization 0.95`  | ~6.3 GiB  | ~52k            | ~6                  |
+
+Quantizing the weights frees more room than anything else, because on a small card the weights take up most of the memory.
+
+### Check Against the Engine
+
+You don't have to trust back-of-envelope overhead estimates.
+When vLLM starts, it profiles memory and logs the size of the KV cache in tokens, plus the maximum concurrency for the configured `--max-model-len`.
+Run the calculation first, then compare it with the log.
+A large gap usually means the overhead was underestimated or the config values were misread (for example, a model whose `head_dim` is not `hidden_size / num_attention_heads`).
+
+## Paging: Why Fragmentation Is No Longer the Problem
+
+Before PagedAttention, engines reserved a contiguous slab of memory for each request's maximum possible length.
+A request that stopped after 200 tokens still held space for 8,000.
+
+vLLM splits the cache into fixed-size **blocks** (16 tokens per block by default) and allocates them on demand.
+A sequence of $T$ tokens uses $\lceil T / B \rceil$ blocks, so the waste per sequence is at most $B - 1$ token slots in its last block.
+With $B = 16$ and Llama 3.1 8B, that is at most $15 \times 128\ \text{KiB} \approx 1.9\ \text{MiB}$ per sequence.
+
+So with paging, the formula above is close to the real allocation.
+The cache fills up because of real tokens, not reserved ones.
+
+## Levers for Fitting More
+
+When the cache is the bottleneck, these are the options, roughly in order of how often they're the right answer:
+
+1. **Set `--max-model-len` to what you actually need.** This doesn't change how much cache a request uses, but vLLM refuses to start if a single maximum-length sequence can't fit. Capping it to your real workload lets the model load on smaller GPUs.
+2. **Use an FP8 KV cache** (`--kv-cache-dtype fp8`). This halves the cache size. Quality loss is usually small, but measure it on your own evaluation set, especially for long-context retrieval.
+3. **Quantize the weights.** On memory-constrained cards, moving from BF16 to 8-bit or 4-bit weights can triple the cache budget.
+4. **Add tensor parallelism.** Splitting the model across $N$ GPUs splits both the weights and the KV heads, so each GPU stores $H_{kv}/N$ heads per token. You need $H_{kv}$ to be divisible by $N$; beyond that, KV heads get replicated and the saving stops.
+5. **Reuse prefixes.** Automatic prefix caching shares blocks between requests with identical prefixes, such as a long system prompt. Ten requests that share a 4k-token prefix store it once, not ten times.
+6. **Offload to CPU or disk.** Tools such as LMCache move cold KV blocks out of VRAM and bring them back for reuse. This trades PCIe bandwidth for capacity and works best when prefixes repeat across requests.
+
+## A Small Calculator
+
+The whole calculation fits in a few lines of Python and reads straight from a Hugging Face config:
+
+```python
+import json
+import math
+
+def kv_bytes_per_token(cfg: dict, kv_bytes: int = 2) -> int:
+    layers = cfg["num_hidden_layers"]
+    kv_heads = cfg.get("num_key_value_heads", cfg["num_attention_heads"])
+    head_dim = cfg.get("head_dim") or cfg["hidden_size"] // cfg["num_attention_heads"]
+    return 2 * layers * kv_heads * head_dim * kv_bytes
+
+def capacity(cfg: dict, gpu_gib: float, weights_gib: float,
+             seq_len: int, util: float = 0.9, overhead_gib: float = 1.5,
+             kv_bytes: int = 2, tp: int = 1):
+    per_token = kv_bytes_per_token(cfg, kv_bytes) / tp
+    budget = (util * gpu_gib - weights_gib / tp - overhead_gib) * 1024**3
+    tokens = max(budget, 0) / per_token
+    return {
+        "kv_per_token_kib": per_token / 1024,
+        "cache_tokens": int(tokens),
+        "concurrent_full_requests": math.floor(tokens / seq_len),
+    }
+
+cfg = json.load(open("config.json"))
+print(capacity(cfg, gpu_gib=24, weights_gib=15.0, seq_len=8192))
+```
+
+For Llama 3.1 8B this prints about 42,000 cache tokens and 5 concurrent 8k requests, matching the worked example.
+It does not handle MLA, sliding-window attention, or hybrid models that mix attention and state-space layers; those need their own per-layer accounting.
+
+## Conclusion
+
+Treat KV cache as the main capacity resource when you plan an LLM deployment.
+The per-token cost comes straight from four numbers in `config.json`.
+The budget is whatever VRAM the weights leave behind.
+Concurrency is the ratio of the two.
+
+Once you can do this calculation, model selection gets easier to reason about.
+A model with 8 KV heads or MLA can serve several times more users than an older MHA model of the same size, and an FP8 cache or quantized weights can matter more than buying another GPU.
+After deployment, `vllm:kv_cache_usage_perc` and the preemption rate tell you whether the estimate held up.
+
+## Works Cited
+
+- Kwon et al., _Efficient Memory Management for Large Language Model Serving with PagedAttention_, SOSP 2023. [arXiv:2309.06180](https://arxiv.org/abs/2309.06180)
+- Ainslie et al., _GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints_, 2023. [arXiv:2305.13245](https://arxiv.org/abs/2305.13245)
+- Shazeer, _Fast Transformer Decoding: One Write-Head is All You Need_, 2019. [arXiv:1911.02150](https://arxiv.org/abs/1911.02150)
+- DeepSeek-AI, _DeepSeek-V2: A Strong, Economical, and Efficient Mixture-of-Experts Language Model_, 2024. [arXiv:2405.04434](https://arxiv.org/abs/2405.04434)
+- DeepSeek-AI, _DeepSeek-V3 Technical Report_, 2024. [arXiv:2412.19437](https://arxiv.org/abs/2412.19437)
+- [vLLM documentation](https://docs.vllm.ai/)
